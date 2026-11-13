@@ -208,54 +208,42 @@
     $("j-feats").innerHTML = html;
   }
 
-  async function startJourney() {
+  /* Step-by-step journey controller: Auto-play, or press Next stage by stage. */
+  var J = { res: null, stage: -1 };
+  function prepareJourney() {
     var raw = $("j-text").value.trim();
-    if (!raw || running) return;
-    if (!MODEL) { alert("The model file is still loading — give it a second and run again."); return; }
-    running = true;
-    var btn = $("j-run"); btn.disabled = true; btn.textContent = "⏳ Running…";
-    var res = runModel(raw);
+    if (!raw) return null;
+    if (!MODEL) { alert("The model file is still loading — give it a second and try again."); return null; }
+    J.res = runModel(raw);
+    J.stage = -1;
+    var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
+    $("j-verdict-note").textContent = "";
+    $("j-fill").style.width = "0%"; $("j-p").textContent = "—";
+    document.querySelectorAll(".cloud-comment").forEach(function (c) { c.classList.remove("show"); });
+    var nb = $("j-next"); if (nb) nb.textContent = "Next →";
     if (window.FD3D) window.FD3D.burst();
+    return J.res;
+  }
 
-    setStage(0);
-    $("j-raw").textContent = raw;
-    await stageDelay(1100);
-
-    setStage(1); renderAnon(res.anon);
-    await stageDelay(1700);
-
-    setStage(2); renderTokens(res.anon);
-    await stageDelay(1900);
-
-    setStage(3); renderLang(raw, res.det);
-    await stageDelay(1600);
-
-    setStage(4); renderVec(raw);
-    if (journeyNN) { journeyNN.scan(function () {}); }
-    if (window.FD3D) window.FD3D.burst();
-    await stageDelay(2300);
-
-    setStage(5); renderFeats(res);
-    await stageDelay(1800);
-
-    setStage(6);
+  function animateMeter(res) {
     var fill = $("j-fill"), pEl = $("j-p");
     $("j-band").style.left = Math.max(0, (res.thr - MARGIN) * 100) + "%";
     $("j-band").style.width = (MARGIN * 2 * 100) + "%";
     $("j-tick").style.left = "calc(" + (res.thr * 100) + "% - 1px)";
     $("j-thr-label").textContent = "threshold " + Math.round(res.thr * 100) + "% · band = uncertain";
     fill.style.width = "0%"; pEl.textContent = "0%";
-    await stageDelay(150);
-    fill.style.width = (res.p * 100) + "%";
-    var t0 = performance.now(), dur = 1300 / speed();
-    (function count(t) {
-      var k = Math.min(1, (t - t0) / dur);
-      pEl.textContent = Math.round(res.p * 100 * (1 - Math.pow(1 - k, 3))) + "% fraud probability";
-      if (k < 1) requestAnimationFrame(count);
-    })(t0);
-    await stageDelay(1700);
+    setTimeout(function () {
+      fill.style.width = (res.p * 100) + "%";
+      var t0 = performance.now(), dur = 1300;
+      (function count(t) {
+        var k = Math.min(1, (t - t0) / dur);
+        pEl.textContent = Math.round(res.p * 100 * (1 - Math.pow(1 - k, 3))) + "% fraud probability";
+        if (k < 1) requestAnimationFrame(count);
+      })(t0);
+    }, 120);
+  }
 
-    setStage(7);
+  function showVerdict(res) {
     var v = $("j-verdict");
     var stamp = res.zone === "fraud" ? "⚠️ FRAUD" : res.zone === "safe" ? "✅ LIKELY SAFE" : "❓ UNCERTAIN";
     var expl = res.zone === "fraud"
@@ -270,10 +258,79 @@
     $("j-verdict-note").textContent = expl;
     if (journeyNN) journeyNN.setVerdict(res.zone === "fraud" ? "FRAUD" : "SAFE", res.p);
     if (window.FD3D) window.FD3D.setVerdict(res.zone);
-    btn.disabled = false; btn.textContent = "↻ Run it again";
+  }
+
+  function renderStage(i) {
+    var res = J.res; if (!res) return;
+    J.stage = i; setStage(i); setCloud(i, res);
+    var nb = $("j-next"); if (nb) nb.textContent = i >= 7 ? "↻ Start over" : "Next →";
+    if (i === 0) { $("j-raw").textContent = res.raw; }
+    else if (i === 1) renderAnon(res.anon);
+    else if (i === 2) renderTokens(res.anon);
+    else if (i === 3) renderLang(res.raw, res.det);
+    else if (i === 4) { renderVec(res.raw); if (journeyNN) journeyNN.scan(function () {}); if (window.FD3D) window.FD3D.burst(); }
+    else if (i === 5) renderFeats(res);
+    else if (i === 6) animateMeter(res);
+    else if (i === 7) showVerdict(res);
+  }
+
+  async function startJourney() {
+    if (running) return;
+    if (!prepareJourney()) return;
+    running = true;
+    var btn = $("j-run"); btn.disabled = true; btn.textContent = "⏳ Running…";
+    var delays = [1100, 1700, 1900, 1600, 2300, 1800, 1900, 600];
+    for (var i = 0; i <= 7; i++) { renderStage(i); await stageDelay(delays[i]); }
+    btn.disabled = false; btn.textContent = "▶ Auto-play";
     running = false;
   }
   $("j-run").addEventListener("click", startJourney);
+  $("j-next").addEventListener("click", function () {
+    if (running) return;
+    if (!J.res || J.stage >= 7) { if (!prepareJourney()) return; renderStage(0); return; }
+    renderStage(J.stage + 1);
+  });
+  $("j-prev").addEventListener("click", function () {
+    if (running || !J.res || J.stage <= 0) return;
+    renderStage(J.stage - 1);
+  });
+
+  /* Cloud comments: a presenter-style bubble pops in on each stage. */
+  document.querySelectorAll(".stage").forEach(function (st) {
+    var d = document.createElement("div");
+    d.className = "cloud-comment";
+    st.insertBefore(d, st.children[1]);
+  });
+  function cloudText(i, res) {
+    switch (i) {
+      case 0: return "📩 Meet the suspect. Read it like a scammer wrote it — a prize, urgency, a link, and an OTP request.";
+      case 1: {
+        var n = (res.anon.match(/\[(PHONE|OTP|URL|ACCOUNT|UPI|EMAIL)\]/g) || []).length;
+        return "🧹 Cleaned! " + n + " private detail" + (n === 1 ? "" : "s") + " hidden behind placeholders — the real numbers never reach the model.";
+      }
+      case 2: return "🔤 Words break into sub-words — that's how the model reads Telugu and Hindi words it has never seen whole.";
+      case 3: return "🌐 The script gives it away: this one is " + res.det.label + ". Each language gets its own scoring head.";
+      case 4: return "🧠 MuRIL just turned meaning into 768 numbers. The same meaning in any of our 3 languages lands at nearby numbers.";
+      case 5: {
+        var names = window.FraudFeatures.FEATURE_NAMES, on = 0;
+        ["has_url", "otp_is_requested", "mentions_prize", "mentions_kyc", "mentions_blocked", "mentions_click", "has_upi", "mentions_do_not_share"].forEach(function (nm) {
+          var ix = names.indexOf(nm); if (ix >= 0 && res.feats && res.feats[ix] > 0) on++;
+        });
+        return "🚩 " + on + " of the headline signals fired on this message — every lit chip is really in the text, not decoration.";
+      }
+      case 6: return "🎯 Everything is weighed together — watch where the score lands against the " + res.det.label + " threshold (" + Math.round(res.thr * 100) + "%).";
+      case 7: return res.zone === "fraud" ? "🚨 FRAUD. In the real product, this warning appears before the user can click anything."
+        : res.zone === "safe" ? "✅ LIKELY SAFE — and notice how the genuine-service cues helped pull the score down."
+        : "🤔 Too close to call. The system asks a human instead of guessing — by design.";
+    }
+    return "";
+  }
+  function setCloud(i, res) {
+    document.querySelectorAll(".stage").forEach(function (st, k) {
+      var c = st.querySelector(".cloud-comment");
+      if (c && k === i) { c.textContent = cloudText(i, res); c.classList.add("show"); }
+    });
+  }
 
   /* ---------------- exploded view: component details ---------------- */
   var PARTS = {
@@ -376,6 +433,17 @@
   });
   $("fd-close").addEventListener("click", function () { panel.classList.remove("open"); });
 
+  var cloudTimer = null;
+  function showFdCloud(res) {
+    var c = $("fd-cloud"); if (!c) return;
+    c.className = "fd-cloud show " + res.zone;
+    c.textContent = res.zone === "fraud" ? "⚠️ " + Math.round(res.p * 100) + "% fraud chance — don't click anything, don't share any OTP!"
+      : res.zone === "safe" ? "✅ Looks safe — " + Math.round(res.p * 100) + "% fraud chance. Still, never share an OTP with anyone."
+      : "❓ Uncertain (" + Math.round(res.p * 100) + "%) — verify this one independently before acting.";
+    if (cloudTimer) clearTimeout(cloudTimer);
+    cloudTimer = setTimeout(function () { c.classList.remove("show"); }, 5000);
+  }
+
   function popupCheck(text) {
     var box = $("fd-result");
     if (!text) {
@@ -405,6 +473,7 @@
       '<button class="fd-fb-btn" data-fix="fraud">It’s fraud</button>' +
       '<button class="fd-fb-btn" data-fix="ham">It’s safe</button></div>' +
       '<div class="fd-learn-note" id="fd-learn-note"></div>';
+    showFdCloud(res);
     box.querySelectorAll("[data-fix]").forEach(function (b) {
       b.addEventListener("click", function () {
         $("fd-learn-note").textContent = "✓ Noted on this page — in the extension, this correction also teaches your personal model instantly.";

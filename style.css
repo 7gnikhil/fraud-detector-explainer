@@ -287,3 +287,25 @@ footer { max-width: 1020px; margin: 30px auto 0; padding: 22px 18px 110px; color
   .ds-bars .lbar { grid-template-columns: 110px 1fr 86px; }
   .nav .links { display: none; }
 }
+
+/* --- cloud comments (presenter bubbles) --- */
+.cloud-comment { display: none; position: relative; margin: 2px 0 14px; max-width: 580px;
+  background: linear-gradient(180deg,#f8fafc,#e0f2fe); color: #0c4a6e; font-size: 13.5px;
+  font-weight: 600; line-height: 1.55; padding: 11px 15px; border-radius: 18px;
+  box-shadow: 0 10px 24px rgba(2,32,71,.35); }
+.cloud-comment.show { display: block;
+  animation: cloudIn .45s cubic-bezier(.2,1.4,.3,1) both, cloudFloat 3.4s ease-in-out .6s infinite; }
+.cloud-comment::after { content: ""; position: absolute; left: 36px; bottom: -7px; width: 16px; height: 16px;
+  background: #e0f2fe; transform: rotate(45deg); border-radius: 3px; }
+@keyframes cloudIn { from { opacity: 0; transform: translateY(10px) scale(.9); } to { opacity: 1; transform: none; } }
+@keyframes cloudFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.fd-cloud { position: fixed; top: 72px; right: 20px; z-index: 950; max-width: 262px; display: none;
+  background: linear-gradient(180deg,#f8fafc,#e0f2fe); color: #0c4a6e; font-size: 13px; font-weight: 700;
+  line-height: 1.5; padding: 12px 15px; border-radius: 18px; box-shadow: 0 12px 28px rgba(2,32,71,.45); }
+.fd-cloud.show { display: block; animation: cloudIn .4s cubic-bezier(.2,1.4,.3,1) both; }
+.fd-cloud::after { content: ""; position: absolute; top: -7px; right: 34px; width: 16px; height: 16px;
+  background: #f8fafc; transform: rotate(45deg); border-radius: 3px; }
+.fd-cloud.fraud { background: linear-gradient(180deg,#fff7ed,#fee2e2); color: #7f1d1d; }
+.fd-cloud.fraud::after { background: #fff7ed; }
+.fd-cloud.safe { background: linear-gradient(180deg,#f0fdf4,#dcfce7); color: #14532d; }
+.fd-cloud.safe::after { background: #f0fdf4; }
