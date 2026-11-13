@@ -125,11 +125,14 @@
       d.classList.toggle("active", s === i);
       d.classList.toggle("done", s < i);
     });
+    var stageNames = ["Message", "Preprocess", "Tokenize", "Language", "MuRIL embed", "Features", "Classify", "Verdict"];
+    var lbl = $("j-step-label");
+    if (lbl) lbl.textContent = "Stage " + (i + 1) + " of 8 — " + stageNames[i];
     for (var k = 0; k <= 7; k++) {
       var el = $("stage-" + k);
       el.classList.toggle("active", k === i);
       el.classList.toggle("done", k < i);
-      if (k === i) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (k === i) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
 
@@ -220,6 +223,8 @@
     $("j-verdict-note").textContent = "";
     $("j-fill").style.width = "0%"; $("j-p").textContent = "—";
     document.querySelectorAll(".cloud-comment").forEach(function (c) { c.classList.remove("show"); });
+    var lbl2 = $("j-step-label");
+    if (lbl2) lbl2.textContent = "Press Next to begin the journey →";
     var nb = $("j-next"); if (nb) nb.textContent = "Next →";
     if (window.FD3D) window.FD3D.burst();
     return J.res;

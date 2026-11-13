@@ -81,9 +81,6 @@
       <label class="speed">Speed
         <select id="j-speed"><option value="1">1×</option><option value="2">2×</option><option value="0.5">0.5×</option></select>
       </label>
-      <button id="j-run" class="btn ghost">▶ Auto-play</button>
-      <button id="j-prev" class="btn ghost">← Back</button>
-      <button id="j-next" class="btn primary">Next →</button>
     </div>
 
     <div class="progress" id="j-progress">
@@ -177,6 +174,13 @@
       <h3><span class="stage-no">7</span> The verdict</h3>
       <div class="verdict-card" id="j-verdict"></div>
       <p class="stage-note" id="j-verdict-note"></p>
+    </div>
+
+    <div class="journey-nav" id="journeyNav">
+      <button id="j-prev" class="btn ghost">← Back</button>
+      <span class="j-step" id="j-step-label">Press Next to begin the journey →</span>
+      <button id="j-run" class="btn ghost">▶ Auto-play</button>
+      <button id="j-next" class="btn primary">Next →</button>
     </div>
   </div>
 </section>
