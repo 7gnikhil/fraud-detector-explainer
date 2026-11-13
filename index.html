@@ -103,12 +103,17 @@
 
     <div class="stage" id="stage-1">
       <h3><span class="stage-no">1</span> Preprocessing — clean &amp; anonymize</h3>
+      <div class="ba-label">📥 BEFORE — as the user received it</div>
+      <div class="raw-box before" id="j-before"></div>
+      <div class="ba-arrow">⬇ &nbsp;normalize · native digits → ASCII · mask links, OTPs, numbers&nbsp; ⬇</div>
+      <div class="ba-label">🤖 AFTER — what the model actually sees</div>
       <div class="raw-box anon" id="j-anon"></div>
       <div class="legend">
         <span><i class="sw phone"></i>[PHONE]</span><span><i class="sw otp"></i>[OTP]</span>
         <span><i class="sw url"></i>[URL]</span><span><i class="sw acct"></i>[ACCOUNT]</span>
         <span><i class="sw upi"></i>[UPI]</span><span><i class="sw email"></i>[EMAIL]</span>
       </div>
+      <div class="changes" id="j-changes"></div>
       <p class="stage-note">Unicode is normalized (NFC), native Telugu/Devanagari digits become
         ASCII digits, and every private identifier is replaced by a placeholder —
         <b>the identical function runs in training and in prediction</b>, so the model never sees

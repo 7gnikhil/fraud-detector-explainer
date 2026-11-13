@@ -142,6 +142,67 @@
     $("j-anon").innerHTML = esc;
   }
 
+  /* Before -> after preprocessing view: mirrors anonymize.js exactly —
+     same patterns, same order (URL, EMAIL, UPI, ACCOUNT, PHONE, OTP). */
+  var MASK_PATTERNS = [
+    { kind: "URL", icon: "🔗", label: "link", re: /https?:\/\/\S+|www\.\S+/ },
+    { kind: "EMAIL", icon: "📧", label: "email", re: /[\w.+-]+@[\w-]+(\.[\w-]+)+/ },
+    { kind: "UPI", icon: "💸", label: "UPI id", re: /\b[\w.\-]{2,}@[a-zA-Z]{2,}\b/ },
+    { kind: "ACCOUNT", icon: "🏦", label: "account / card number", re: /\b\d{4}[\s-]\d{4}[\s-]\d{4}([\s-]\d{2,4})?\b|\b\d{12,18}\b/ },
+    { kind: "PHONE", icon: "📱", label: "phone number", re: /(\+91[\s-]?|91[\s-]?|0)?[6-9]\d{9}\b|\b\d{5}[\s-]\d{5}\b/ },
+    { kind: "OTP", icon: "🔢", label: "OTP / PIN code", re: /\b\d{4,8}\b/ }
+  ];
+  function segmentize(work) {
+    var segs = [], rest = work;
+    while (rest.length) {
+      var best = null;
+      MASK_PATTERNS.forEach(function (p) {
+        var m = p.re.exec(rest);
+        if (m && (!best || m.index < best.index)) {
+          best = { index: m.index, text: m[0], kind: p.kind, icon: p.icon, label: p.label };
+        }
+      });
+      if (!best) { segs.push({ text: rest }); break; }
+      if (best.index > 0) segs.push({ text: rest.slice(0, best.index) });
+      segs.push(best);
+      rest = rest.slice(best.index + best.text.length);
+    }
+    return segs;
+  }
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  function renderPreprocess(res) {
+    var FP = window.FraudPreprocess;
+    var work = FP ? FP.translateNativeDigits(res.raw.normalize("NFC")) : res.raw;
+    var segs = segmentize(work);
+    var beforeHtml = "", changes = [];
+    segs.forEach(function (s) {
+      if (s.kind) {
+        beforeHtml += '<span class="hl ' + s.kind + '">' + esc(s.text) + "</span>";
+        changes.push(s);
+      } else beforeHtml += esc(s.text);
+    });
+    var bEl = $("j-before"); if (bEl) bEl.innerHTML = beforeHtml;
+    renderAnon(res.anon);
+    var cEl = $("j-changes"); if (!cEl) return;
+    var html = '<div class="changes-title">What changed — every replacement, in order:</div>';
+    if (!changes.length) {
+      html += '<span class="change none">✓ Nothing to mask in this message — no links, OTP codes, phone or account numbers. Only normalization was applied.</span>';
+    }
+    changes.forEach(function (c) {
+      var from = c.text.length > 36 ? c.text.slice(0, 34) + "…" : c.text;
+      html += '<span class="change">' + c.icon + " " + c.label + ' <b>"' + esc(from) + '"</b> → <b>[' + c.kind + "]</b></span>";
+    });
+    var nativeDigits = (res.raw.match(/[౦-౯०-९]/g) || []).length;
+    if (nativeDigits) {
+      html += '<span class="change">🔢 ' + nativeDigits + " native-script digit" + (nativeDigits === 1 ? "" : "s") + " → ASCII digits</span>";
+    }
+    if (/₹|\bRs\.?\b|\bINR\b/i.test(res.raw)) {
+      html += '<span class="change info">💰 The amount stays visible on purpose — it is a fraud signal, not private data.</span>';
+    }
+    cEl.innerHTML = html;
+  }
+
   function renderTokens(anon) {
     var words = anon.split(/\s+/).filter(Boolean).slice(0, 60);
     var html = '<span class="tok special">[CLS]</span>';
@@ -268,7 +329,7 @@
     J.stage = i; setStage(i); setCloud(i, res);
     var nb = $("j-next"); if (nb) nb.textContent = i >= 7 ? "↻ Start over" : "Next →";
     if (i === 0) { $("j-raw").textContent = res.raw; }
-    else if (i === 1) renderAnon(res.anon);
+    else if (i === 1) renderPreprocess(res);
     else if (i === 2) renderTokens(res.anon);
     else if (i === 3) renderLang(res.raw, res.det);
     else if (i === 4) { renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
@@ -282,7 +343,7 @@
     if (!prepareJourney()) return;
     running = true;
     var btn = $("j-run"); btn.disabled = true; btn.textContent = "⏳ Running…";
-    var delays = [1100, 1700, 1900, 1600, 3600, 1800, 1900, 600];
+    var delays = [1100, 2200, 1900, 1600, 3600, 1800, 1900, 600];
     for (var i = 0; i <= 7; i++) { renderStage(i); await stageDelay(delays[i]); }
     btn.disabled = false; btn.textContent = "▶ Auto-play";
     running = false;
