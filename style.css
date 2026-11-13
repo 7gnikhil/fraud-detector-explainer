@@ -322,3 +322,21 @@ footer { max-width: 1020px; margin: 30px auto 0; padding: 22px 18px 110px; color
   .journey-nav { flex-wrap: wrap; }
   .journey-nav .j-step { order: -1; flex: 1 1 100%; }
 }
+
+/* --- mobile hardening --- */
+img, canvas { max-width: 100%; }
+#results .card { overflow-x: auto; }
+table.results { min-width: 520px; }
+.verdict-card { flex-wrap: wrap; }
+@supports (height: 100svh) { .hero { min-height: 92svh; } }
+@media (max-width: 720px) {
+  .hero { padding-top: 18px; }
+  .stage h3 { font-size: 15.5px; }
+  .verdict-card .stamp { font-size: 18px; }
+  .big-p { font-size: 32px; }
+  .part { min-width: 96px; flex-basis: 96px; }
+  .tokens .tok { font-size: 11.5px; }
+  #fd-panel { right: 10px; bottom: 84px; }
+  #fd-float-btn { right: 14px; bottom: 14px; }
+  .fd-cloud { right: 10px; max-width: 220px; }
+}

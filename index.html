@@ -142,7 +142,10 @@
         Languages) reads the tokens through <b>12 transformer layers</b> and we average the token
         vectors (<i>mean pooling</i>) into one 768-number meaning fingerprint. The network is
         <b>frozen</b> — pre-trained by Google, never fine-tuned by us — so it can’t overfit our
-        small dataset. In the extension this runs as a 239&nbsp;MB int8 ONNX model, on-device.</p>
+        small dataset. In the extension this runs as a 239&nbsp;MB int8 ONNX model, on-device.
+        <b>The network above is drawn from this very message</b> — its own tokens light the input,
+        the detected language node fires, the feature nodes that glow are the signals really
+        present, and the verdict nodes fill with the model’s true probability.</p>
     </div>
 
     <div class="stage" id="stage-5">
@@ -341,6 +344,7 @@
 <script src="langdetect.js"></script>
 <script src="lexical.js"></script>
 <script src="nn.js"></script>
+<script src="realnn.js"></script>
 <script src="app.js"></script>
 <script type="module" src="model3d.js"></script>
 </body>

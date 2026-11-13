@@ -50,11 +50,9 @@
   }
 
   /* ---------------- hero + journey neural nets ---------------- */
-  var heroNN = null, journeyNN = null;
-  if (window.FraudNN) {
-    heroNN = window.FraudNN.attach($("nn-hero"), {});
-    journeyNN = window.FraudNN.attach($("nn-journey"), {});
-  }
+  var heroNN = null, realNN = null;
+  try { if (window.FraudNN) heroNN = window.FraudNN.attach($("nn-hero"), {}); } catch (e) { heroNN = null; }
+  try { if (window.RealNN) realNN = window.RealNN.attach($("nn-journey")); } catch (e) { realNN = null; }
 
   /* ---------------- reveal + counters ---------------- */
   var io = new IntersectionObserver(function (es) {
@@ -261,7 +259,7 @@
       Math.round(res.p * 100) + "% fraud probability · " + res.det.label +
       " · lexical arm live on this page (the extension stacks MuRIL embeddings on top, so its exact score can differ slightly)</span>";
     $("j-verdict-note").textContent = expl;
-    if (journeyNN) journeyNN.setVerdict(res.zone === "fraud" ? "FRAUD" : "SAFE", res.p);
+    if (realNN) realNN.finish(res);
     if (window.FD3D) window.FD3D.setVerdict(res.zone);
   }
 
@@ -273,7 +271,7 @@
     else if (i === 1) renderAnon(res.anon);
     else if (i === 2) renderTokens(res.anon);
     else if (i === 3) renderLang(res.raw, res.det);
-    else if (i === 4) { renderVec(res.raw); if (journeyNN) journeyNN.scan(function () {}); if (window.FD3D) window.FD3D.burst(); }
+    else if (i === 4) { renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
     else if (i === 5) renderFeats(res);
     else if (i === 6) animateMeter(res);
     else if (i === 7) showVerdict(res);
@@ -284,7 +282,7 @@
     if (!prepareJourney()) return;
     running = true;
     var btn = $("j-run"); btn.disabled = true; btn.textContent = "⏳ Running…";
-    var delays = [1100, 1700, 1900, 1600, 2300, 1800, 1900, 600];
+    var delays = [1100, 1700, 1900, 1600, 3600, 1800, 1900, 600];
     for (var i = 0; i <= 7; i++) { renderStage(i); await stageDelay(delays[i]); }
     btn.disabled = false; btn.textContent = "▶ Auto-play";
     running = false;
