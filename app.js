@@ -580,3 +580,22 @@
   });
   document.addEventListener("dragover", function (e) { e.preventDefault(); });
 })();
+
+/* --- day / night theme toggle (persisted as localStorage fdTheme) --- */
+(function () {
+  var b = document.getElementById('theme-toggle');
+  if (!b) return;
+  function sync() {
+    var day = document.documentElement.dataset.theme === 'day';
+    b.textContent = day ? '\ud83c\udf19 Night' : '\u2600\ufe0f Day';
+    b.setAttribute('aria-pressed', day ? 'true' : 'false');
+  }
+  b.addEventListener('click', function () {
+    var day = document.documentElement.dataset.theme !== 'day';
+    if (day) { document.documentElement.dataset.theme = 'day'; }
+    else { document.documentElement.removeAttribute('data-theme'); }
+    try { localStorage.setItem('fdTheme', day ? 'day' : 'night'); } catch (e) {}
+    sync();
+  });
+  sync();
+})();
