@@ -132,11 +132,11 @@
         <span><b>5</b> Convert every piece into its vocabulary ID number</span>
         <span><b>6</b> Pad with [PAD] to length 128 — the attention mask marks the real tokens</span>
       </div>
-      <div class="conv-title">The pieces — the real MuRIL tokenizer, running on this page</div>
+      <div class="conv-title">Step 3–4 · The pieces — the real MuRIL tokenizer, running on this page ([CLS] and [SEP] added)</div>
       <div class="tokens" id="j-tokens"></div>
-      <div class="conv-title">Conversion — every piece becomes a number: its ID in the 197,258-token vocabulary</div>
+      <div class="conv-title">Step 5 · Conversion — every piece becomes a number: its ID in the 197,258-token vocabulary</div>
       <div class="idmap" id="j-idmap"></div>
-      <div class="conv-title">input_ids — the number sequence the model actually receives</div>
+      <div class="conv-title">Step 6 · input_ids — the number sequence the model actually receives</div>
       <div class="ids-seq" id="j-ids"></div>
       <div class="pad-note" id="j-pad"></div>
       <p class="stage-note">This is the <b>real MuRIL WordPiece tokenizer</b> — the same code and the
@@ -146,7 +146,11 @@
     </div>
 
     <div class="stage" id="stage-3">
-      <h3><span class="stage-no">3</span> Language detection</h3>
+      <h3><span class="stage-no">3</span> Language detection — simple and raw</h3>
+      <div class="conv-title">The raw view — every letter of your message, painted by its script</div>
+      <div class="raw-box" id="j-langraw"></div>
+      <div class="pad-note" id="j-langcounts"></div>
+      <div class="conv-title">The count decides — the biggest script wins and picks the classifier head</div>
       <div class="lang-bars" id="j-lang"></div>
       <p class="stage-note">The script does most of the work: Telugu block (అ–ఱ), Devanagari
         (अ–ह) or Latin — with word lists catching Romanized Telugu and Hinglish. The detected
@@ -158,6 +162,11 @@
       <h3><span class="stage-no">4</span> MuRIL embedding — the neural network</h3>
       <div class="conv-title">Conversion — every token ID is replaced by its learned 768-number vector (strips compressed for display)</div>
       <div id="j-conv"></div>
+      <div class="conv-title">Inside the transformer — how the IDs become its actual input</div>
+      <div id="j-tinput"></div>
+      <div class="pad-note">For every position, the input vector = <b>token embedding</b> + <b>position embedding</b>
+        (segment embedding is all zeros — a message is a single segment). That sum is what enters
+        transformer layer 1 of 12. <span class="muted">(Vector strips compressed for display.)</span></div>
       <div class="pool-arrow">⬇ &nbsp;the 12 transformer layers refine every vector, then mean pooling averages them into one message vector&nbsp; ⬇</div>
       <canvas id="nn-journey"></canvas>
       <div class="vec-wrap"><div class="vec" id="j-vec"></div>

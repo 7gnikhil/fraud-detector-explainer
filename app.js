@@ -286,6 +286,25 @@
     box.innerHTML = rows;
   }
 
+  function renderTInput(res) {
+    var box = $("j-tinput"); if (!box) return;
+    if (!res.enc) { box.innerHTML = '<p class="stage-note">Loading the real vocabulary — this view appears in a moment.</p>'; loadTokenizer(); return; }
+    var n = Math.min(8, res.enc.pieces.length), html = '<div class="tinput-wrap">';
+    html += '<div class="ti-col labels"><span class="ti-tok">&nbsp;</span><span class="ti-id">&nbsp;</span>' +
+      '<span class="ti-lab">token emb.</span><span class="ti-lab">+ position</span><span class="ti-lab">= input</span></div>';
+    for (var i = 0; i < n; i++) {
+      var id = res.enc.ids[i];
+      html += '<div class="ti-col"><span class="ti-tok">' + esc(res.enc.pieces[i]) + '</span>' +
+        '<span class="ti-id">' + id + '</span>' +
+        '<span class="ti-strip tok">' + miniVec(id, 15) + '</span>' +
+        '<span class="ti-strip pos">' + miniVec(900001 + i * 131, 15) + '</span>' +
+        '<span class="ti-strip inp">' + miniVec(id * 7 + i * 131 + 17, 15) + '</span></div>';
+    }
+    if (res.enc.pieces.length > n) html += '<div class="ti-col more"><span class="ti-tok">\u2026</span><span class="ti-id">' + (res.enc.pieces.length - n) + ' more</span></div>';
+    html += '</div><div class="pad-note">Positions are numbered 0, 1, 2, \u2026 — the position embedding is how the model knows the word order. These summed input vectors flow into layer 1; each of the 12 layers lets every token attend to all the others.</div>';
+    box.innerHTML = html;
+  }
+
   function renderTotal(res) {
     var box = $("j-total"); if (!box) return;
     var nz = 0;
@@ -310,6 +329,22 @@
 
   function renderLang(raw, det) {
     var mix = scriptMix(raw);
+    var rawEl = $("j-langraw"), cntEl = $("j-langcounts");
+    if (rawEl) {
+      var rh = "", nTe = 0, nHi = 0, nEn = 0, nOt = 0;
+      for (var ci = 0; ci < raw.length; ci++) {
+        var ch = raw[ci], cc = raw.charCodeAt(ci), cls;
+        if (cc >= 0x0C00 && cc <= 0x0C7F) { cls = "sc-te"; nTe++; }
+        else if (cc >= 0x0900 && cc <= 0x097F) { cls = "sc-hi"; nHi++; }
+        else if ((cc >= 65 && cc <= 90) || (cc >= 97 && cc <= 122)) { cls = "sc-en"; nEn++; }
+        else { cls = "sc-ot"; nOt++; }
+        rh += '<span class="' + cls + '">' + esc(ch) + "</span>";
+      }
+      rawEl.innerHTML = rh;
+      if (cntEl) cntEl.innerHTML = "Raw letter count \u2014 <b>Telugu letters: " + nTe + "</b> \u00b7 <b>Devanagari letters: " + nHi +
+        "</b> \u00b7 <b>Latin letters: " + nEn + "</b> \u00b7 digits, spaces &amp; symbols: " + nOt +
+        " (not counted) \u2192 winner: <b>" + det.label + "</b>. Romanized Telugu and Hinglish are caught by word lists, because their letters are Latin but their words are not English.";
+    }
     var rows = [["Telugu script", mix.Telugu], ["Devanagari (Hindi)", mix.Hindi], ["Latin (English)", mix.English]];
     $("j-lang").innerHTML = rows.map(function (r) {
       var win = (det.head === "Telugu" && r[0].indexOf("Telugu") === 0) ||
@@ -366,7 +401,7 @@
     if (!MODEL) { alert("The model file is still loading — give it a second and try again."); return null; }
     J.res = runModel(raw);
     if (TOK) attachTokens(J.res); else loadTokenizer();
-    ["j-conv", "j-total", "j-idmap", "j-ids", "j-pad"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
+    ["j-conv", "j-tinput", "j-total", "j-idmap", "j-ids", "j-pad"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
     J.stage = -1;
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
     $("j-verdict-note").textContent = "";
@@ -422,7 +457,7 @@
     else if (i === 1) renderPreprocess(res);
     else if (i === 2) renderTokens(res);
     else if (i === 3) renderLang(res.raw, res.det);
-    else if (i === 4) { renderConv(res); renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
+    else if (i === 4) { renderConv(res); renderTInput(res); renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
     else if (i === 5) renderFeats(res);
     else if (i === 6) animateMeter(res);
     else if (i === 7) { showVerdict(res); renderTotal(res); }
@@ -463,7 +498,7 @@
         return "🧹 Cleaned! " + n + " private detail" + (n === 1 ? "" : "s") + " hidden behind placeholders — the real numbers never reach the model.";
       }
       case 2: return "🔤 Words break into sub-words, and every piece is converted to a number — its vocabulary ID. Those numbers are all the network ever sees.";
-      case 3: return "🌐 The script gives it away: this one is " + res.det.label + ". Each language gets its own scoring head.";
+      case 3: return "🌐 No AI here — just count the letters by script. The biggest script wins: this one is " + res.det.label + ", so the " + res.det.head + " head scores it.";
       case 4: return "🧠 MuRIL just turned meaning into 768 numbers. The same meaning in any of our 3 languages lands at nearby numbers.";
       case 5: {
         var names = window.FraudFeatures.FEATURE_NAMES, on = 0;
