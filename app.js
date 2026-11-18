@@ -262,6 +262,15 @@
     html += ppStep("4 \u00b7 Measure, then mask", "on",
       "The 30 structured features are measured on the raw shapes (the Features stage shows them); only then are private values replaced by placeholders \u2014 the BEFORE / AFTER view below. The identical functions run in training, so the model never sees a form it was not trained on.");
     box.innerHTML = html;
+    var sn = $("j-scriptnote");
+    if (sn) {
+      var head = res.det ? res.det.head : "English";
+      sn.textContent = head === "Telugu"
+        ? "\u{1F524} The script stays Telugu on purpose \u2014 MuRIL's vocabulary holds Telugu pieces directly, so nothing is translated. The transformation happens in the next stage: these letters become vocabulary IDs."
+        : head === "Hindi"
+        ? "\u{1F524} The script stays Devanagari on purpose \u2014 MuRIL's vocabulary holds Hindi pieces directly, so nothing is translated. The transformation happens in the next stage: these letters become vocabulary IDs."
+        : "\u{1F524} The letters stay exactly as written \u2014 the transformation happens in the next stage, where they become vocabulary IDs.";
+    }
   }
 
   function renderPreprocess(res) {
@@ -542,6 +551,15 @@
     btn.disabled = false; btn.textContent = "▶ Auto-play";
     running = false;
   }
+  document.querySelectorAll(".info-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var stage = b.closest(".stage"); if (!stage) return;
+      var note = stage.querySelector(".info-note"); if (!note) return;
+      var open = note.classList.toggle("open");
+      b.classList.toggle("active", open);
+      b.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
   $("j-run").addEventListener("click", startJourney);
   $("j-next").addEventListener("click", function () {
     if (running) return;

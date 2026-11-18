@@ -102,6 +102,15 @@ a:hover { text-decoration: underline; }
 .stage.active .stage-no { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .stage-note { color: var(--text2); font-size: 13px; line-height: 1.7; }
 .stage-note b { color: var(--text); font-weight: 600; }
+.info-btn { margin-left: 8px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid var(--accent);
+  background: transparent; color: var(--accent); font: italic 700 12px Georgia, serif; cursor: pointer;
+  vertical-align: middle; line-height: 1; padding: 0; }
+.info-btn:hover, .info-btn.active { background: var(--accent); color: var(--on-accent); }
+.stage-note.info-note { display: none; }
+.stage-note.info-note.open { display: block; margin-top: 12px; background: var(--bg); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 8px; padding: 10px 12px; }
+.script-note { margin: 8px 0 0; font-size: 12.5px; line-height: 1.6; color: var(--text2);
+  border-left: 3px solid var(--accent); padding: 6px 10px; background: var(--bg); border-radius: 0 8px 8px 0; }
 .raw-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
   padding: 13px 14px; font-size: 14px; line-height: 1.7; word-break: break-word; }
 .raw-box .ph { border-radius: 5px; padding: 1px 6px; font-weight: 700; font-size: 12px;

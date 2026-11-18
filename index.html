@@ -97,14 +97,14 @@
     </div>
 
     <div class="stage" id="stage-0">
-      <h3><span class="stage-no">0</span> The raw message</h3>
+      <h3><span class="stage-no">0</span> The raw message <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="raw-box" id="j-raw"></div>
-      <p class="stage-note">Exactly as the user received it — link, amount, urgency and all.
+      <p class="stage-note info-note">Exactly as the user received it — link, amount, urgency and all.
         This is the only input the model ever gets: <b>text</b>.</p>
     </div>
 
     <div class="stage" id="stage-1">
-      <h3><span class="stage-no">1</span> Preprocessing — clean &amp; anonymize</h3>
+      <h3><span class="stage-no">1</span> Preprocessing — clean &amp; anonymize <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="conv-title">The steps — the same pipeline, but each language makes it do different work</div>
       <div id="j-ppsteps"></div>
       <div class="ba-label">📥 BEFORE — as the user received it</div>
@@ -112,20 +112,21 @@
       <div class="ba-arrow">⬇ &nbsp;normalize · native digits → ASCII · mask links, OTPs, numbers&nbsp; ⬇</div>
       <div class="ba-label">🤖 AFTER — what the model actually sees</div>
       <div class="raw-box anon" id="j-anon"></div>
+      <p class="script-note" id="j-scriptnote"></p>
       <div class="legend">
         <span><i class="sw phone"></i>[PHONE]</span><span><i class="sw otp"></i>[OTP]</span>
         <span><i class="sw url"></i>[URL]</span><span><i class="sw acct"></i>[ACCOUNT]</span>
         <span><i class="sw upi"></i>[UPI]</span><span><i class="sw email"></i>[EMAIL]</span>
       </div>
       <div class="changes" id="j-changes"></div>
-      <p class="stage-note">Unicode is normalized (NFC), native Telugu/Devanagari digits become
+      <p class="stage-note info-note">Unicode is normalized (NFC), native Telugu/Devanagari digits become
         ASCII digits, and every private identifier is replaced by a placeholder —
         <b>the identical function runs in training and in prediction</b>, so the model never sees
         a real phone number or OTP, and training can’t drift from serving.</p>
     </div>
 
     <div class="stage" id="stage-2">
-      <h3><span class="stage-no">2</span> Tokenization — WordPiece, step by step</h3>
+      <h3><span class="stage-no">2</span> Tokenization — WordPiece, step by step <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="tok-steps">
         <span><b>1</b> Clean the text — control characters removed, whitespace tidied</span>
         <span><b>2</b> Split into words and isolate punctuation</span>
@@ -141,27 +142,31 @@
       <div class="conv-title">Step 6 · input_ids — the number sequence the model actually receives</div>
       <div class="ids-seq" id="j-ids"></div>
       <div class="pad-note" id="j-pad"></div>
-      <p class="stage-note">This is the <b>real MuRIL WordPiece tokenizer</b> — the same code and the
+      <p class="stage-note info-note">This is the <b>real MuRIL WordPiece tokenizer</b> — the same code and the
         same 197,258-entry vocabulary the extension ships — running in your browser on the
         anonymized text. A neural network cannot read letters, so this conversion into numbers is
-        what makes the message computable at all; the next stages turn these IDs into meaning.</p>
+        what makes the message computable at all; the next stages turn these IDs into meaning.
+        Two number systems are easy to confuse here: <b>Unicode</b> is how the letters are stored
+        before any of this (అ = U+0C05), while a <b>vocabulary ID</b> is the model’s own numbering
+        (అ → 842). Tokenization does not detect the language either — that is Stage 3, which
+        counts which Unicode script block the letters fall into.</p>
     </div>
 
     <div class="stage" id="stage-3">
-      <h3><span class="stage-no">3</span> Language detection — simple and raw</h3>
+      <h3><span class="stage-no">3</span> Language detection — simple and raw <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="conv-title">The raw view — every letter of your message, painted by its script</div>
       <div class="raw-box" id="j-langraw"></div>
       <div class="pad-note" id="j-langcounts"></div>
       <div class="conv-title">The count decides — the biggest script wins and picks the classifier head</div>
       <div class="lang-bars" id="j-lang"></div>
-      <p class="stage-note">The script does most of the work: Telugu block (అ–ఱ), Devanagari
+      <p class="stage-note info-note">The script does most of the work: Telugu block (అ–ఱ), Devanagari
         (अ–ह) or Latin — with word lists catching Romanized Telugu and Hinglish. The detected
         language chooses <b>which classifier head</b> scores the message: there is one head per
         language, never a single mixed model.</p>
     </div>
 
     <div class="stage" id="stage-4">
-      <h3><span class="stage-no">4</span> MuRIL embedding — the neural network</h3>
+      <h3><span class="stage-no">4</span> MuRIL embedding — the neural network <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="conv-title">Conversion — every token ID is replaced by its learned 768-number vector (strips compressed for display)</div>
       <div id="j-conv"></div>
       <div class="conv-title">Inside the transformer — how the IDs become its actual input</div>
@@ -173,7 +178,7 @@
       <canvas id="nn-journey"></canvas>
       <div class="vec-wrap"><div class="vec" id="j-vec"></div>
         <div class="vec-cap">768 numbers — one per hidden dimension (strip compressed for display)</div></div>
-      <p class="stage-note"><b>MuRIL</b> (Google’s Multilingual Representations for Indian
+      <p class="stage-note info-note"><b>MuRIL</b> (Google’s Multilingual Representations for Indian
         Languages) reads the tokens through <b>12 transformer layers</b> and we average the token
         vectors (<i>mean pooling</i>) into one 768-number meaning fingerprint. The network is
         <b>frozen</b> — pre-trained by Google, never fine-tuned by us — so it can’t overfit our
@@ -184,9 +189,9 @@
     </div>
 
     <div class="stage" id="stage-5">
-      <h3><span class="stage-no">5</span> Lexical + structured features</h3>
+      <h3><span class="stage-no">5</span> Lexical + structured features <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="feat-grid" id="j-feats"></div>
-      <p class="stage-note">Alongside the embedding, the message is hashed into
+      <p class="stage-note info-note">Alongside the embedding, the message is hashed into
         <b>word + character n-gram</b> features (2¹⁴ + 2¹⁵ buckets — the lexical arm, and the one
         computing this page’s live score) and <b>30 hand-built signals</b> are measured: links,
         OTP pressure, prize lures, block threats, digit runs… The chips above that lit up are the
@@ -194,14 +199,14 @@
     </div>
 
     <div class="stage" id="stage-6">
-      <h3><span class="stage-no">6</span> The classifier — stacked logistic regression</h3>
+      <h3><span class="stage-no">6</span> The classifier — stacked logistic regression <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="meter-wrap">
         <div class="meter"><div class="band" id="j-band"></div><div class="fill" id="j-fill"></div>
           <div class="tick" id="j-tick"></div></div>
         <div class="meter-scale"><span>0% — safe</span><span id="j-thr-label">threshold</span><span>100% — fraud</span></div>
         <div class="big-p" id="j-p">—</div>
       </div>
-      <p class="stage-note">A per-language <b>logistic regression</b> stacks the three views —
+      <p class="stage-note info-note">A per-language <b>logistic regression</b> stacks the three views —
         MuRIL embedding + lexical hashes + structured signals — into one fraud probability.
         Each language has its own decision threshold, and a <b>±8-point uncertainty band</b>
         around it: inside the band the honest answer is <i>“uncertain — needs review”</i>,
