@@ -196,6 +196,74 @@
   }
   function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
+  function ppStep(name, status, text) {
+    var chip = status === "on" ? '<span class="pp-chip on">applied</span>'
+      : status === "idle" ? '<span class="pp-chip idle">checked \u2014 nothing to change</span>'
+      : '<span class="pp-chip skip">not run for this language</span>';
+    return '<div class="pp-step"><div class="pp-head"><b>' + name + "</b>" + chip + "</div><p>" + text + "</p></div>";
+  }
+  function countRe(raw, re) { return (raw.match(re) || []).length; }
+  function renderPpSteps(res) {
+    var box = $("j-ppsteps"); if (!box) return;
+    var raw = res.raw, code = res.det ? res.det.code : "en", label = res.det ? res.det.label : "English";
+    var html = "";
+    var nfcChanged = raw.normalize("NFC") !== raw;
+    html += ppStep("1 \u00b7 Unicode NFC normalisation", nfcChanged ? "on" : "idle",
+      "Every character is put into one canonical form, so the same word stored two different ways becomes identical. " +
+      (nfcChanged ? "This message needed recomposing." : "This message was already in canonical form."));
+    var zw = countRe(raw, /[\u200B\u200C\u200D\uFEFF]/g);
+    var zwText = zw ? ("cleaned " + zw + " zero-width/format character" + (zw > 1 ? "s" : "") + " from this message") : "no zero-width characters present";
+    if (code === "te") {
+      var poorna = countRe(raw, /\u0C64/g), dbl = countRe(raw, /\u0C65/g),
+          vowel = countRe(raw, /\u0C46\u0C48/g), vis = countRe(raw, /[\u0C00-\u0C7F]:/g);
+      var fx = [];
+      if (poorna) fx.push(poorna + " poorna virama (\u0C64) \u2192 danda");
+      if (dbl) fx.push(dbl + " (\u0C65) \u2192 double danda");
+      if (vowel) fx.push(vowel + " two-part vowel sign (\u0C46\u0C48) \u2192 canonical \u0C48");
+      if (vis) fx.push(vis + " colon \u2192 visarga (\u0C03)");
+      fx.push(zwText);
+      html += ppStep("2 \u00b7 Telugu normaliser", (poorna || dbl || vowel || vis || zw) ? "on" : "idle",
+        "Telugu text gets its own normaliser (the real Indic NLP rules, ported line-by-line): base cleanup of invisible characters and punctuation, poorna virama \u0C64 \u2192 danda \u0964, \u0C65 \u2192 double danda, the two-part vowel sign \u0C46+\u0C48 merged into the single canonical \u0C48, and a colon after a Telugu letter \u2192 visarga \u0C03. <b>On this message:</b> " + fx.join("; ") + ".");
+    } else if (code === "hi") {
+      var nuk = countRe(raw, /[\u0929\u0931\u0934\u0958-\u095F]/g),
+          chandra = countRe(raw, /\u0972/g), pipe = countRe(raw, /\|/g),
+          hvis = countRe(raw, /[\u0900-\u097F]:/g);
+      var fx2 = [];
+      if (nuk) fx2.push(nuk + " nukta letter" + (nuk > 1 ? "s" : "") + " decomposed (e.g. \u0958 \u2192 \u0915 + \u093C)");
+      if (chandra) fx2.push(chandra + " chandra-a (\u0972) \u2192 \u090F");
+      if (pipe) fx2.push(pipe + " pipe | \u2192 danda \u0964");
+      if (hvis) fx2.push(hvis + " colon \u2192 visarga (\u0903)");
+      fx2.push(zwText);
+      html += ppStep("2 \u00b7 Devanagari normaliser", (nuk || chandra || pipe || hvis || zw) ? "on" : "idle",
+        "Hindi text gets the Devanagari normaliser (the real Indic NLP rules, ported line-by-line): base cleanup, precomposed nukta letters split into base + nukta sign (\u0958 \u2192 \u0915\u093C), chandra-a \u0972 \u2192 \u090F, a typed pipe | becomes the danda \u0964, and a colon after a Devanagari letter \u2192 visarga \u0903. <b>On this message:</b> " + fx2.join("; ") + ".");
+    } else {
+      html += ppStep("2 \u00b7 Script normaliser", "skip",
+        "In the real pipeline this step has a Telugu form and a Devanagari form \u2014 and no English form at all, so for " + label + " text it is skipped entirely: the words pass through unchanged, and only the shared cleanup runs (" + zwText + "). This is a genuine difference between the languages, kept from the original training code.");
+    }
+    var nd = countRe(raw, /[\u0C66-\u0C6F\u0966-\u096F]/g);
+    if (code === "te" || code === "hi") {
+      var base = code === "te" ? 0x0C66 : 0x0966, nat = "", asc = "", d;
+      for (d = 0; d <= 9; d++) { nat += String.fromCharCode(base + d); asc += d; }
+      var runM = raw.match(code === "te" ? /[\u0C66-\u0C6F][\u0C66-\u0C6F, ]*[\u0C66-\u0C6F]/ : /[\u0966-\u096F][\u0966-\u096F, ]*[\u0966-\u096F]/);
+      var conv = "no native digits in this message \u2014 its amounts already use ASCII digits.";
+      if (runM) {
+        var out = "", k, cc;
+        for (k = 0; k < runM[0].length; k++) { cc = runM[0].charCodeAt(k); out += (cc >= base && cc <= base + 9) ? String(cc - base) : runM[0][k]; }
+        conv = '<b>On this message:</b> \u201c' + esc(runM[0].trim()) + '\u201d \u2192 \u201c' + esc(out.trim()) + '\u201d.';
+      }
+      html += ppStep("3 \u00b7 Native digits \u2192 ASCII digits", nd ? "on" : "idle",
+        "Amounts and codes must behave identically in every script, so " + label + " digits are converted: " +
+        '<span class="pp-map">' + nat + " \u2192 " + asc + "</span> \u2014 " + conv +
+        " The letters are never converted; ASCII cannot represent them.");
+    } else {
+      html += ppStep("3 \u00b7 Native digits \u2192 ASCII digits", "skip",
+        "Telugu digits \u0C66\u2013\u0C6F and Devanagari digits \u0966\u2013\u096F are converted to ASCII so amounts behave the same in every script. " + label + " digits already are ASCII, so there is nothing to convert.");
+    }
+    html += ppStep("4 \u00b7 Measure, then mask", "on",
+      "The 30 structured features are measured on the raw shapes (the Features stage shows them); only then are private values replaced by placeholders \u2014 the BEFORE / AFTER view below. The identical functions run in training, so the model never sees a form it was not trained on.");
+    box.innerHTML = html;
+  }
+
   function renderPreprocess(res) {
     var FP = window.FraudPreprocess;
     var work = FP ? FP.translateNativeDigits(res.raw.normalize("NFC")) : res.raw;
@@ -226,6 +294,7 @@
       html += '<span class="change info">💰 The amount stays visible on purpose — it is a fraud signal, not private data.</span>';
     }
     cEl.innerHTML = html;
+    renderPpSteps(res);
   }
 
   function renderTokens(res) {
@@ -401,7 +470,7 @@
     if (!MODEL) { alert("The model file is still loading — give it a second and try again."); return null; }
     J.res = runModel(raw);
     if (TOK) attachTokens(J.res); else loadTokenizer();
-    ["j-conv", "j-tinput", "j-total", "j-idmap", "j-ids", "j-pad"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
+    ["j-conv", "j-tinput", "j-total", "j-idmap", "j-ids", "j-pad", "j-ppsteps"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
     J.stage = -1;
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
     $("j-verdict-note").textContent = "";
@@ -495,7 +564,8 @@
       case 0: return "📩 Meet the suspect. Read it like a scammer wrote it — a prize, urgency, a link, and an OTP request.";
       case 1: {
         var n = (res.anon.match(/\[(PHONE|OTP|URL|ACCOUNT|UPI|EMAIL)\]/g) || []).length;
-        return "🧹 Cleaned! " + n + " private detail" + (n === 1 ? "" : "s") + " hidden behind placeholders — the real numbers never reach the model.";
+        return "🧹 Cleaned! " + n + " private detail" + (n === 1 ? "" : "s") + " hidden behind placeholders — the real numbers never reach the model." +
+          ((res.det.code === "te" || res.det.code === "hi") ? " For " + res.det.label + ", its own script normaliser and digit conversion ran first — English skips those steps entirely." : "");
       }
       case 2: return "🔤 Words break into sub-words, and every piece is converted to a number — its vocabulary ID. Those numbers are all the network ever sees.";
       case 3: return "🌐 No AI here — just count the letters by script. The biggest script wins: this one is " + res.det.label + ", so the " + res.det.head + " head scores it.";

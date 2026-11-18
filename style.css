@@ -461,3 +461,14 @@ html[data-theme="day"] .tok.special { background: rgba(167,139,250,.16); color: 
 .ti-strip.tok i { background: var(--accent2); }
 .ti-strip.pos i { background: #f59e0b; }
 .ti-strip.inp i { background: #a78bfa; }
+
+/* per-language preprocessing steps */
+.pp-step { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px;
+  padding: 9px 12px; margin: 8px 0; background: var(--surface); }
+.pp-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pp-head b { font-size: 13.5px; color: var(--text); }
+.pp-chip { font-size: 10.5px; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--border2); color: var(--text2); }
+.pp-chip.on { color: #4ade80; border-color: rgba(74,222,128,.5); }
+.pp-chip.skip { color: #fbbf24; border-color: rgba(251,191,36,.45); }
+.pp-step p { margin: 5px 0 0; font-size: 13px; line-height: 1.6; color: var(--text2); }
+.pp-map { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--code); white-space: nowrap; }
