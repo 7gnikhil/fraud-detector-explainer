@@ -16,7 +16,7 @@
   <div class="links">
     <a href="#journey">Live journey</a><a href="#exploded">Exploded view</a>
     <a href="#dataset">Dataset</a><a href="#training">Training</a>
-    <a href="#runtime">How it runs</a><a href="#results">Results</a>
+    <a href="#cicd">CI/CD</a><a href="#runtime">How it runs</a><a href="#results">Results</a>
   </div>
   <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch between day and night theme">☀️ Day</button>
 </nav>
@@ -66,7 +66,7 @@
 <section id="journey" class="reveal">
   <h2 class="sec-title">🛣️ The live journey of one message</h2>
   <p class="sec-sub">Pick a message — or paste your own — and watch it travel through the exact
-    pipeline the extension runs: anonymize → tokenize → detect language → embed → extract
+    pipeline the extension runs: anonymize → tokenize → convert to token IDs → detect language → embed → extract
     features → classify → verdict. The final score is computed by the <b>real trained lexical
     model</b> in your browser; nothing is uploaded.</p>
 
@@ -123,12 +123,26 @@
     </div>
 
     <div class="stage" id="stage-2">
-      <h3><span class="stage-no">2</span> Tokenization — WordPiece</h3>
+      <h3><span class="stage-no">2</span> Tokenization — WordPiece, step by step</h3>
+      <div class="tok-steps">
+        <span><b>1</b> Clean the text — control characters removed, whitespace tidied</span>
+        <span><b>2</b> Split into words and isolate punctuation</span>
+        <span><b>3</b> WordPiece — every word matched to its longest known pieces (<b>##</b> = continuation)</span>
+        <span><b>4</b> Add the special tokens — [CLS] at the start, [SEP] at the end</span>
+        <span><b>5</b> Convert every piece into its vocabulary ID number</span>
+        <span><b>6</b> Pad with [PAD] to length 128 — the attention mask marks the real tokens</span>
+      </div>
+      <div class="conv-title">The pieces — the real MuRIL tokenizer, running on this page</div>
       <div class="tokens" id="j-tokens"></div>
-      <p class="stage-note">MuRIL’s WordPiece tokenizer splits text into sub-word pieces from a
-        <b>197,285-token vocabulary</b> built for Indian languages, adds <b>[CLS]</b> / <b>[SEP]</b>,
-        and pads/truncates to 128 tokens. <span class="muted">(Display simplified: pieces shown
-        per word.)</span></p>
+      <div class="conv-title">Conversion — every piece becomes a number: its ID in the 197,258-token vocabulary</div>
+      <div class="idmap" id="j-idmap"></div>
+      <div class="conv-title">input_ids — the number sequence the model actually receives</div>
+      <div class="ids-seq" id="j-ids"></div>
+      <div class="pad-note" id="j-pad"></div>
+      <p class="stage-note">This is the <b>real MuRIL WordPiece tokenizer</b> — the same code and the
+        same 197,258-entry vocabulary the extension ships — running in your browser on the
+        anonymized text. A neural network cannot read letters, so this conversion into numbers is
+        what makes the message computable at all; the next stages turn these IDs into meaning.</p>
     </div>
 
     <div class="stage" id="stage-3">
@@ -142,6 +156,9 @@
 
     <div class="stage" id="stage-4">
       <h3><span class="stage-no">4</span> MuRIL embedding — the neural network</h3>
+      <div class="conv-title">Conversion — every token ID is replaced by its learned 768-number vector (strips compressed for display)</div>
+      <div id="j-conv"></div>
+      <div class="pool-arrow">⬇ &nbsp;the 12 transformer layers refine every vector, then mean pooling averages them into one message vector&nbsp; ⬇</div>
       <canvas id="nn-journey"></canvas>
       <div class="vec-wrap"><div class="vec" id="j-vec"></div>
         <div class="vec-cap">768 numbers — one per hidden dimension (strip compressed for display)</div></div>
@@ -184,6 +201,8 @@
       <h3><span class="stage-no">7</span> The verdict</h3>
       <div class="verdict-card" id="j-verdict"></div>
       <p class="stage-note" id="j-verdict-note"></p>
+      <div class="conv-title" style="margin-top:16px">🧭 The total journey — this message, end to end</div>
+      <div class="total-stack" id="j-total"></div>
     </div>
 
     <div class="journey-nav" id="journeyNav">
@@ -192,6 +211,48 @@
       <button id="j-run" class="btn ghost">▶ Auto-play</button>
       <button id="j-next" class="btn primary">Next →</button>
     </div>
+  </div>
+</section>
+
+<section id="cicd" class="reveal">
+  <h2 class="sec-title">🔁 CI/CD — how the system ships &amp; improves</h2>
+  <p class="sec-sub">The model is only half the system. Around it runs a delivery pipeline: every
+    code change is tested automatically, the backend deploys itself, the extension ships as a
+    versioned release, and a better model may replace the current one only by beating it at
+    fixed gates — never automatically.</p>
+  <div class="card">
+    <div class="cicd-lane">
+      <div class="cicd-head"><h3>1 · Continuous integration</h3><span class="pill">ON EVERY PUSH &amp; PULL REQUEST</span></div>
+      <div class="cicd-steps">
+        <div class="cstep"><b>Push to GitHub</b>code, model configuration or workflow changes land in the repository</div><span class="carrow">→</span>
+        <div class="cstep"><b>Backend test suite</b>21 automated tests — endpoints, the privacy backstop, feedback rules</div><span class="carrow">→</span>
+        <div class="cstep"><b>Extension packaging</b>the release package is assembled and its checksum recorded</div><span class="carrow">→</span>
+        <div class="cstep"><b>Green or blocked</b>a failing check stops the line — nothing broken ships</div>
+      </div>
+    </div>
+    <div class="cicd-lane">
+      <div class="cicd-head"><h3>2 · Delivery &amp; deployment</h3><span class="pill">AUTOMATED</span></div>
+      <div class="cicd-steps">
+        <div class="cstep"><b>Backend → Vercel</b>the production branch deploys itself when changes land</div><span class="carrow">→</span>
+        <div class="cstep"><b>Extension release</b>a versioned package with its checksum is published on GitHub</div><span class="carrow">→</span>
+        <div class="cstep"><b>Edge Add-ons</b>uploaded through the publish API; Microsoft then certifies the update</div><span class="carrow">→</span>
+        <div class="cstep"><b>Users auto-update</b>the store pushes the new version to installed browsers</div>
+      </div>
+    </div>
+    <div class="cicd-lane">
+      <div class="cicd-head"><h3>3 · The model loop</h3><span class="pill gated">GATED — HUMAN APPROVAL</span></div>
+      <div class="cicd-steps">
+        <div class="cstep"><b>User corrections</b>“It’s fraud / It’s safe” — sharing is opt-in, and text is anonymized on the device first</div><span class="carrow">→</span>
+        <div class="cstep"><b>Private feedback inbox</b>shared corrections collect in a private store, exportable as CSV</div><span class="carrow">→</span>
+        <div class="cstep"><b>Challenger retrain</b>a scheduled run trains a candidate model on the enlarged data</div><span class="carrow">→</span>
+        <div class="cstep"><b>Evaluation gates</b>the challenger must beat the champion — per-language F1, precision floors, the challenge set</div><span class="carrow">→</span>
+        <div class="cstep"><b>Promotion by pull request</b>a human reviews and merges; only then does the new model ship</div>
+      </div>
+    </div>
+    <p class="stage-note">Honest status: lanes 1 and 2 run today — the backend tests gate every push
+      and the live backend deploys from its production branch. Lane 3 is built and gated: the
+      retraining step activates when the training package is provisioned on the runner, and no
+      model is ever promoted without passing the gates and a human merge.</p>
   </div>
 </section>
 
@@ -352,6 +413,7 @@
 <script src="lexical.js"></script>
 <script src="nn.js"></script>
 <script src="realnn.js"></script>
+<script src="tokenizer.js"></script>
 <script src="app.js"></script>
 <script type="module" src="model3d.js"></script>
 </body>

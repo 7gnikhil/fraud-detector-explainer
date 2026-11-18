@@ -23,6 +23,31 @@
     .then(function (m) { MODEL = m; if (m.uncertainty_margin) MARGIN = m.uncertainty_margin; })
     .catch(function () { MODEL = null; });
 
+  /* ------------- real MuRIL tokenizer (lazy: the vocab is 4.7 MB) ------------- */
+  var TOK = null, TOK_PROMISE = null;
+  function loadTokenizer() {
+    if (TOK) return Promise.resolve(TOK);
+    if (!TOK_PROMISE) {
+      TOK_PROMISE = fetch("vocab.json").then(function (r) { return r.json(); }).then(function (v) {
+        var tk = window.FraudTokenizer.createTokenizer(v);
+        var rev = [];
+        Object.keys(v).forEach(function (k) { rev[v[k]] = k; });
+        TOK = { tk: tk, rev: rev };
+        if (typeof J !== "undefined" && J.res) {
+          attachTokens(J.res);
+          if (J.stage === 2 || J.stage === 4 || J.stage === 7) renderStage(J.stage);
+        }
+        return TOK;
+      }).catch(function () { return null; });
+    }
+    return TOK_PROMISE;
+  }
+  function attachTokens(res) {
+    if (!TOK || res.enc) return;
+    var enc = TOK.tk.encode(res.anon);
+    res.enc = { ids: enc.input_ids, pieces: enc.input_ids.map(function (id) { return TOK.rev[id] || "[UNK]"; }) };
+  }
+
   function runModel(raw) {
     var anon = window.FraudAnonymize ? window.FraudAnonymize(raw) : raw;
     var det = window.FraudDetectLanguage(raw);
@@ -203,21 +228,84 @@
     cEl.innerHTML = html;
   }
 
-  function renderTokens(anon) {
-    var words = anon.split(/\s+/).filter(Boolean).slice(0, 60);
-    var html = '<span class="tok special">[CLS]</span>';
-    words.forEach(function (w, wi) {
-      var clean = w.replace(/[^\p{L}\p{N}\[\]]/gu, "");
-      if (!clean) return;
-      if (clean.length <= 5) { html += '<span class="tok" style="animation-delay:' + (wi * 45) + 'ms">' + clean + "</span>"; return; }
-      var chunks = [];
-      for (var i = 0; i < clean.length; i += 4) chunks.push(clean.slice(i, i + 4));
-      chunks.forEach(function (c, ci) {
-        html += '<span class="tok" style="animation-delay:' + (wi * 45 + ci * 30) + 'ms">' + (ci ? "##" : "") + c + "</span>";
+  function renderTokens(res) {
+    var tEl = $("j-tokens"), mEl = $("j-idmap"), iEl = $("j-ids"), pEl = $("j-pad");
+    if (!res.enc) {
+      // vocabulary still loading: honest simplified stand-in for a moment
+      var words = res.anon.split(/\s+/).filter(Boolean).slice(0, 60);
+      var h0 = '<span class="tok special">[CLS]</span>';
+      words.forEach(function (w, wi) {
+        var clean = w.replace(/[^\p{L}\p{N}\[\]]/gu, "");
+        if (!clean) return;
+        if (clean.length <= 5) { h0 += '<span class="tok">' + clean + "</span>"; return; }
+        for (var i = 0; i < clean.length; i += 4) h0 += '<span class="tok">' + (i ? "##" : "") + clean.slice(i, i + 4) + "</span>";
       });
+      h0 += '<span class="tok special">[SEP]</span>';
+      tEl.innerHTML = h0;
+      mEl.innerHTML = '<span class="idchip more">Loading the real 197,258-entry vocabulary…</span>';
+      iEl.innerHTML = ""; pEl.innerHTML = "";
+      loadTokenizer();
+      return;
+    }
+    var pieces = res.enc.pieces, ids = res.enc.ids;
+    var html = "";
+    pieces.forEach(function (pc, i) {
+      var special = pc === "[CLS]" || pc === "[SEP]" || pc === "[PAD]";
+      html += '<span class="tok' + (special ? " special" : "") + '" style="animation-delay:' + (i * 35) + 'ms">' + esc(pc) + "</span>";
     });
-    html += '<span class="tok special">[SEP]</span>';
-    $("j-tokens").innerHTML = html;
+    tEl.innerHTML = html;
+    var n = Math.min(pieces.length, 28), map = "";
+    for (var a = 0; a < n; a++) map += '<span class="idchip">' + esc(pieces[a]) + " <b>\u2192 " + ids[a] + "</b></span>";
+    if (pieces.length > n) map += '<span class="idchip more">\u2026 +' + (pieces.length - n) + " more pieces</span>";
+    mEl.innerHTML = map;
+    var m = Math.min(ids.length, 32), seq = "";
+    for (var b = 0; b < m; b++) seq += '<span class="idcell">' + ids[b] + "</span>";
+    if (ids.length > m) seq += '<span class="idcell more">\u2026</span>';
+    iEl.innerHTML = seq;
+    var pad = Math.max(0, 128 - ids.length);
+    pEl.innerHTML = "<b>" + ids.length + "</b> real tokens (attention mask = 1) \u00b7 <b>" + pad + "</b> \u00d7 [PAD] (id 0, mask = 0) \u2192 final length <b>128</b>, exactly the model's input shape" +
+      (ids.length >= 128 ? " — this message hit the cap, so it was truncated, keeping [SEP] last" : "");
+  }
+
+  function miniVec(seedNum) {
+    var s = (seedNum * 2654435761) >>> 0, h = "";
+    for (var j = 0; j < 28; j++) { s = (s * 1103515245 + 12345) >>> 0; h += '<i style="height:' + (12 + ((s >>> 8) % 88)) + '%"></i>'; }
+    return h;
+  }
+  function renderConv(res) {
+    var box = $("j-conv"); if (!box) return;
+    if (!res.enc) { box.innerHTML = '<p class="stage-note">Loading the real vocabulary — the conversion view appears in a moment.</p>'; loadTokenizer(); return; }
+    var rows = "", shown = 0;
+    for (var i = 0; i < res.enc.pieces.length && shown < 6; i++) {
+      var pc = res.enc.pieces[i];
+      if (pc === "[CLS]" || pc === "[SEP]") continue;
+      rows += '<div class="conv-row"><span class="conv-tok">' + esc(pc) + '</span><span class="conv-id">id ' + res.enc.ids[i] + '</span><span class="conv-vec">' + miniVec(res.enc.ids[i]) + '</span><span class="conv-dim">768 numbers</span></div>';
+      shown++;
+    }
+    rows += '<div class="conv-row more"><span class="conv-tok">\u2026</span><span class="conv-id">all ' + res.enc.ids.length + ' tokens</span><span class="conv-dim">every token becomes its own 768-number vector; the transformer then lets them attend to each other</span></div>';
+    box.innerHTML = rows;
+  }
+
+  function renderTotal(res) {
+    var box = $("j-total"); if (!box) return;
+    var nz = 0;
+    if (res.feats) res.feats.forEach(function (v) { if (v > 0) nz++; });
+    var idsTxt = res.enc ? res.enc.ids.slice(0, 10).join(", ") + (res.enc.ids.length > 10 ? ", \u2026" : "") : "\u2014";
+    var pcsTxt = res.enc ? esc(res.enc.pieces.slice(0, 8).join(" \u00b7 ")) + (res.enc.pieces.length > 8 ? " \u00b7 \u2026" : "") : "\u2014";
+    var verdict = res.zone === "fraud" ? "\u26a0\ufe0f FRAUD" : res.zone === "safe" ? "\u2705 LIKELY SAFE" : "\u2753 UNCERTAIN";
+    function cut(s) { return s.length > 150 ? s.slice(0, 148) + "\u2026" : s; }
+    var rows = [
+      ["\ud83d\udce9 Raw message", esc(cut(res.raw))],
+      ["\ud83e\uddf9 Anonymized", esc(cut(res.anon))],
+      ["\ud83d\udd24 Tokens" + (res.enc ? " (" + res.enc.ids.length + ")" : ""), pcsTxt],
+      ["\ud83d\udd22 Token IDs", idsTxt],
+      ["\ud83c\udf10 Language", res.det.label + " \u2192 the " + res.det.head + " classifier head"],
+      ["\ud83e\udde0 Embedding", "one 768-number message vector (mean-pooled MuRIL)"],
+      ["\ud83d\udea9 Structured signals", nz + " of the 30 features are non-zero for this message"],
+      ["\ud83c\udfaf Probability", Math.round(res.p * 100) + "% fraud \u00b7 threshold " + Math.round(res.thr * 100) + "% \u00b7 uncertainty band \u00b1" + Math.round(MARGIN * 100)],
+      ["\u2696\ufe0f Verdict", "<b>" + verdict + "</b>"]
+    ];
+    box.innerHTML = rows.map(function (r) { return '<div class="trow"><span class="tlabel">' + r[0] + '</span><span class="tval">' + r[1] + "</span></div>"; }).join("");
   }
 
   function renderLang(raw, det) {
@@ -277,6 +365,8 @@
     if (!raw) return null;
     if (!MODEL) { alert("The model file is still loading — give it a second and try again."); return null; }
     J.res = runModel(raw);
+    if (TOK) attachTokens(J.res); else loadTokenizer();
+    ["j-conv", "j-total", "j-idmap", "j-ids", "j-pad"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
     J.stage = -1;
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
     $("j-verdict-note").textContent = "";
@@ -330,12 +420,12 @@
     var nb = $("j-next"); if (nb) nb.textContent = i >= 7 ? "↻ Start over" : "Next →";
     if (i === 0) { $("j-raw").textContent = res.raw; }
     else if (i === 1) renderPreprocess(res);
-    else if (i === 2) renderTokens(res.anon);
+    else if (i === 2) renderTokens(res);
     else if (i === 3) renderLang(res.raw, res.det);
-    else if (i === 4) { renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
+    else if (i === 4) { renderConv(res); renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
     else if (i === 5) renderFeats(res);
     else if (i === 6) animateMeter(res);
-    else if (i === 7) showVerdict(res);
+    else if (i === 7) { showVerdict(res); renderTotal(res); }
   }
 
   async function startJourney() {
@@ -343,7 +433,7 @@
     if (!prepareJourney()) return;
     running = true;
     var btn = $("j-run"); btn.disabled = true; btn.textContent = "⏳ Running…";
-    var delays = [1100, 2200, 1900, 1600, 3600, 1800, 1900, 600];
+    var delays = [1100, 2200, 3000, 1600, 4200, 1800, 1900, 600];
     for (var i = 0; i <= 7; i++) { renderStage(i); await stageDelay(delays[i]); }
     btn.disabled = false; btn.textContent = "▶ Auto-play";
     running = false;
@@ -372,7 +462,7 @@
         var n = (res.anon.match(/\[(PHONE|OTP|URL|ACCOUNT|UPI|EMAIL)\]/g) || []).length;
         return "🧹 Cleaned! " + n + " private detail" + (n === 1 ? "" : "s") + " hidden behind placeholders — the real numbers never reach the model.";
       }
-      case 2: return "🔤 Words break into sub-words — that's how the model reads Telugu and Hindi words it has never seen whole.";
+      case 2: return "🔤 Words break into sub-words, and every piece is converted to a number — its vocabulary ID. Those numbers are all the network ever sees.";
       case 3: return "🌐 The script gives it away: this one is " + res.det.label + ". Each language gets its own scoring head.";
       case 4: return "🧠 MuRIL just turned meaning into 768 numbers. The same meaning in any of our 3 languages lands at nearby numbers.";
       case 5: {
@@ -402,8 +492,8 @@
       b: "Real Indian messages collected from government/TRAI advisories, Truecaller reports, consumer complaints and news quotes. Fraud requires a real scam cue; awareness posts are genuine class. 5,555 rows are real; 2,069 are flagged paraphrases of real seeds. Near-duplicate <b>skeletons</b> are grouped so copies can’t straddle train and test." },
     preprocess: { t: "🧹 Preprocessing — clean & anonymize", s: ["NFC normalize", "native digits → ASCII", "[PHONE] [OTP] [URL] [ACCOUNT] [UPI] [EMAIL]"],
       b: "One function, used identically in training and prediction: normalize Unicode, convert Telugu/Devanagari digits, replace every private identifier with a placeholder. The model learns the <i>shape</i> of scams and never sees a real OTP or phone number — privacy by construction, and no train/serve skew." },
-    tokenizer: { t: "🔤 Tokenizer — WordPiece", s: ["197,285-token vocabulary", "max length 128", "[CLS] / [SEP]"],
-      b: "MuRIL’s WordPiece tokenizer splits text into sub-word pieces — vital for Indian languages, where one word carries many suffixes. Frequent words stay whole; rare words break into pieces the model still understands." },
+    tokenizer: { t: "🔤 Tokenizer — WordPiece", s: ["197,258-token vocabulary", "pieces → token IDs", "max length 128 · [CLS] / [SEP]"],
+      b: "MuRIL’s WordPiece tokenizer splits text into sub-word pieces — vital for Indian languages, where one word carries many suffixes. Frequent words stay whole; rare words break into pieces the model still understands. Each piece is then converted to its vocabulary ID and the sequence is padded to length 128 — the number sequence the network actually consumes. Stage 2 of the journey runs this exact tokenizer, live." },
     muril: { t: "🧠 MuRIL — the neural network", s: ["12 transformer layers", "768 hidden size", "12 attention heads", "~237M parameters", "17 Indian languages + English"],
       b: "Google’s MuRIL (Multilingual Representations for Indian Languages), pre-trained on Wikipedia, Common Crawl, the PMINDIA corpus and Dakshina — including transliterated text. We keep it <b>frozen</b> and mean-pool its token vectors into a 768-number embedding: all of its language knowledge, none of the overfitting risk of fine-tuning on 7,624 rows. Flip the <b>X-ray</b> switch to see the layers. For the browser, it is int8-quantized to 239 MB and runs in ONNX Runtime Web." },
     features: { t: "🧮 Features — lexical + structured", s: ["word n-grams 2¹⁴", "char n-grams 2¹⁵", "30 structured signals"],
