@@ -537,6 +537,46 @@
   });
   window.FD_selectPart = selectPart;
 
+  /* Exploded-view motion: auto animate (assemble <-> explode), a gentle bob
+     scaled by the spread, and a data-flow wave in pipeline order. */
+  var partsEls = Array.prototype.slice.call(document.querySelectorAll(".part"));
+  var playBtn = $("explodePlay"), flowBtn = $("flowBtn");
+  var exploding = false, flowOn = true, flowIdx = -1, explodedVisible = false;
+  if (playBtn) playBtn.addEventListener("click", function () {
+    exploding = !exploding;
+    playBtn.textContent = exploding ? "\u23f8 Pause" : "\u25b6 Animate";
+  });
+  if (flowBtn) flowBtn.addEventListener("click", function () {
+    flowOn = !flowOn;
+    flowBtn.textContent = flowOn ? "\ud83c\udf0a Flow: on" : "\ud83c\udf0a Flow: off";
+    if (!flowOn) partsEls.forEach(function (el) { el.classList.remove("flow"); });
+  });
+  var eio = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { explodedVisible = e.isIntersecting; });
+  }, { threshold: 0.08 });
+  var exSec = $("exploded"); if (exSec) eio.observe(exSec);
+  setInterval(function () {
+    if (!flowOn || !explodedVisible) return;
+    partsEls.forEach(function (el) { el.classList.remove("flow"); });
+    flowIdx = (flowIdx + 1) % partsEls.length;
+    if (partsEls[flowIdx]) partsEls[flowIdx].classList.add("flow");
+  }, 850);
+  (function explodeLoop(t) {
+    requestAnimationFrame(explodeLoop);
+    if (!explodedVisible) return;
+    var tt = (t || 0) / 1000;
+    if (exploding && range) {
+      range.value = Math.round(((Math.sin(tt * 0.55) + 1) / 2) * 100);
+      applySpread();
+    }
+    var spreadNow = parseFloat(getComputedStyle(stageEl).getPropertyValue("--spread")) || 0;
+    partsEls.forEach(function (el, k) {
+      var amp = 2 + spreadNow * 5;
+      el.style.translate = "0 " + (Math.sin(tt * 1.6 + k * 0.85) * amp).toFixed(1) + "px";
+    });
+  })(0);
+
+
   /* ---------------- extension popup: web edition ---------------- */
   var btn2 = $("fd-float-btn"), panel = $("fd-panel"), overlay = $("fd-drop-overlay");
   var popupOn = true;

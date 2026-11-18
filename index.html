@@ -259,13 +259,16 @@
 <section id="exploded" class="reveal">
   <h2 class="sec-title">🔩 Exploded view — every component, separated</h2>
   <p class="sec-sub">Like a technical drawing of an engine: drag the slider and the system pulls
-    itself apart. <b>Click any component</b> to inspect it. Flip the X-ray switch on MuRIL to see
-    inside the transformer.</p>
+    itself apart — or press <b>▶ Animate</b> and watch it assemble and explode on its own. The
+    <b>flow wave</b> travels the components in the order a message does. <b>Click any component</b>
+    to inspect it. Flip the X-ray switch on MuRIL to see inside the transformer.</p>
   <div class="card">
     <div class="explode-controls">
       <span>Assembled</span>
       <input type="range" id="explodeRange" min="0" max="100" value="65">
       <span>Exploded</span>
+      <button id="explodePlay" class="btn ghost" type="button">▶ Animate</button>
+      <button id="flowBtn" class="btn ghost" type="button">🌊 Flow: on</button>
       <label class="switch small"><input type="checkbox" id="xrayToggle">
         <span class="track"><span class="thumb"></span></span><span class="switch-label">X-ray MuRIL</span></label>
     </div>
