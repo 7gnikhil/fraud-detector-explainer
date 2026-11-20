@@ -155,30 +155,30 @@
     </div>
 
     <div class="stage" id="stage-2">
-      <h3><span class="stage-no">2</span> Tokenization — WordPiece, step by step <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
-      <div class="tok-steps">
-        <span><b>1</b> Clean the text — control characters removed, whitespace tidied</span>
-        <span><b>2</b> Split into words and isolate punctuation</span>
-        <span><b>3</b> WordPiece — every word matched to its longest known pieces (<b>##</b> = continuation)</span>
-        <span><b>4</b> Add the special tokens — [CLS] at the start, [SEP] at the end</span>
-        <span><b>5</b> Convert every piece into its vocabulary ID number</span>
-        <span><b>6</b> Pad with [PAD] to length 128 — the attention mask marks the real tokens</span>
+      <h3><span class="stage-no">2</span> Tokenization — WordPiece: words → pieces → numbers <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
+      <div class="tok-panel" id="j-tokpanel">
+        <div class="tok-row" data-tokrow="1">
+          <div class="tok-row-head"><span class="tok-row-name">Words</span><span class="tok-row-sub">the anonymized message, split the way the tokenizer splits it (punctuation stands alone)</span></div>
+          <div class="tok-chips" id="j-tok-words"></div>
+        </div>
+        <div class="tok-join">↓ &nbsp;WordPiece — every word matched to its longest known pieces; <b>##</b> continues the word above it</div>
+        <div class="tok-row" data-tokrow="2">
+          <div class="tok-row-head"><span class="tok-row-name">WordPiece pieces</span><span class="tok-row-sub">grouped by word · <b>[CLS]</b> and <b>[SEP]</b> are added at the two ends</span></div>
+          <div class="tok-chips" id="j-tok-pieces"></div>
+        </div>
+        <div class="tok-join">↓ &nbsp;every piece becomes its ID in the 197,258-token vocabulary — hover a piece or an ID to see its pair</div>
+        <div class="tok-row" data-tokrow="3">
+          <div class="tok-row-head"><span class="tok-row-name">Token IDs</span><span class="tok-row-sub">input_ids — the number sequence the model actually receives</span></div>
+          <div class="tok-chips" id="j-tok-ids"></div>
+        </div>
       </div>
-      <div class="conv-title">Step 3–4 · The pieces — the real MuRIL tokenizer, running on this page ([CLS] and [SEP] added)</div>
-      <div class="tokens" id="j-tokens"></div>
-      <div class="conv-title">Step 5 · Conversion — every piece becomes a number: its ID in the 197,258-token vocabulary</div>
-      <div class="idmap" id="j-idmap"></div>
-      <div class="conv-title">Step 6 · input_ids — the number sequence the model actually receives</div>
-      <div class="ids-seq" id="j-ids"></div>
       <div class="pad-note" id="j-pad"></div>
       <p class="stage-note info-note">This is the <b>real MuRIL WordPiece tokenizer</b> — the same code and the
         same 197,258-entry vocabulary the extension ships — running in your browser on the
-        anonymized text. A neural network cannot read letters, so this conversion into numbers is
-        what makes the message computable at all; the next stages turn these IDs into meaning.
-        Two number systems are easy to confuse here: <b>Unicode</b> is how the letters are stored
-        before any of this (అ = U+0C05), while a <b>vocabulary ID</b> is the model’s own numbering
-        (అ → 842). Tokenization does not detect the language either — that is Stage 3, which
-        counts which Unicode script block the letters fall into.</p>
+        anonymized text. Two number systems are easy to confuse here: <b>Unicode</b> is how the
+        letters are stored before any of this (అ = U+0C05), while a <b>vocabulary ID</b> is the
+        model’s own numbering (అ → 842). Tokenization does not detect the language either —
+        that is Stage 3, which counts which Unicode script block the letters fall into.</p>
     </div>
 
     <div class="stage" id="stage-3">
@@ -201,8 +201,7 @@
       <div class="conv-title">Inside the transformer — how the IDs become its actual input</div>
       <div id="j-tinput"></div>
       <div class="pad-note">For every position, the input vector = <b>token embedding</b> + <b>position embedding</b>
-        (segment embedding is all zeros — a message is a single segment). That sum is what enters
-        transformer layer 1 of 12. <span class="muted">(Vector strips compressed for display.)</span></div>
+        (segment embedding is all zeros — a message is a single segment).</div>
       <div class="pool-arrow">⬇ &nbsp;the 12 transformer layers refine every vector, then mean pooling averages them into one message vector&nbsp; ⬇</div>
       <canvas id="nn-journey"></canvas>
       <div class="vec-wrap"><div class="vec" id="j-vec"></div>
@@ -214,7 +213,9 @@
         small dataset. In the extension this runs as a 239&nbsp;MB int8 ONNX model, on-device.
         <b>The network above is drawn from this very message</b> — its own tokens light the input,
         the detected language node fires, the feature nodes that glow are the signals really
-        present, and the verdict nodes fill with the model’s true probability.</p>
+        present, and the verdict nodes fill with the model’s true probability.
+        The summed token + position vectors are what enter transformer layer 1 of 12;
+        the vector strips on this page are compressed for display.</p>
     </div>
 
     <div class="stage" id="stage-5">
@@ -402,12 +403,16 @@
 <section id="results" class="reveal">
   <h2 class="sec-title">📊 Results — with their test basis printed</h2>
   <div class="card">
-    <table class="results">
-      <tr><th>Model</th><th>Test basis</th><th>English F1</th><th>Hindi F1</th><th>Telugu F1</th></tr>
-      <tr><td>Lexical arm (runs live on this page)</td><td>real-only, grouped 5-fold CV</td><td>0.948</td><td>0.989</td><td>0.900</td></tr>
-      <tr><td><b>Full v4 stack</b> (MuRIL + lexical + structured)</td><td>real-only, grouped meta-CV</td><td><b>0.954</b></td><td><b>0.989</b></td><td><b>0.919</b></td></tr>
-      <tr><td>Full v4 stack</td><td>64 genuinely unseen messages</td><td colspan="3">≈ 81% accuracy (12 errors) — hardest: genuine alert-style messages</td></tr>
-    </table>
+    <h3 class="chart-title">Real-only F1 by language</h3>
+    <div class="chart-legend">
+      <span><i class="swatch lex"></i>Lexical arm — runs live on this page</span>
+      <span><i class="swatch full"></i>Full v4 stack — MuRIL + lexical + structured</span>
+    </div>
+    <div id="chart-f1"></div>
+    <p class="chart-note">Test basis — lexical arm: real-only, grouped 5-fold CV · full v4 stack: real-only,
+      grouped meta-CV. The axis runs the full 0–1: no truncated scale, so a small gap looks small.
+      On a separate set of 64 genuinely unseen messages the full stack scores ≈ 81% accuracy
+      (12 errors) — hardest: genuine alert-style messages (see the challenge-set note below).</p>
     <p class="stage-note">Read the Hindi number carefully: real Hindi data is thin (566 messages,
       only 72 unique genuine ones), so 0.989 is a small-sample score, not a field promise.
       Try the known hard case yourself in the journey above — the sample
@@ -424,38 +429,7 @@
     <h3 class="ds-sub">The unseen-message test — every prediction, shown</h3>
     <p class="stage-note">30 messages the model never trained on (10 per language, zero overlap with
       training). Confusion matrices for the full v4 stack — no averaging hides the errors:</p>
-    <div class="cm-cards">
-      <div class="cm-card">
-        <h4>English <span class="cm-n">n = 10</span></h4>
-        <div class="cm-grid">
-          <div class="cm-cell ok"><b>5</b><span>TP · fraud caught</span></div>
-          <div class="cm-cell bad"><b>0</b><span>FP · false alarms</span></div>
-          <div class="cm-cell bad"><b>0</b><span>FN · fraud missed</span></div>
-          <div class="cm-cell ok"><b>5</b><span>TN · genuine passed</span></div>
-        </div>
-        <p class="cm-pr">Precision <b>1.00</b> (5/5) · Recall <b>1.00</b> (5/5)</p>
-      </div>
-      <div class="cm-card">
-        <h4>Hindi <span class="cm-n">n = 10</span></h4>
-        <div class="cm-grid">
-          <div class="cm-cell ok"><b>5</b><span>TP · fraud caught</span></div>
-          <div class="cm-cell bad"><b>1</b><span>FP · false alarms</span></div>
-          <div class="cm-cell bad"><b>0</b><span>FN · fraud missed</span></div>
-          <div class="cm-cell ok"><b>4</b><span>TN · genuine passed</span></div>
-        </div>
-        <p class="cm-pr">Precision <b>0.83</b> (5/6) · Recall <b>1.00</b> (5/5)</p>
-      </div>
-      <div class="cm-card">
-        <h4>Telugu <span class="cm-n">n = 10</span></h4>
-        <div class="cm-grid">
-          <div class="cm-cell ok"><b>5</b><span>TP · fraud caught</span></div>
-          <div class="cm-cell bad"><b>3</b><span>FP · false alarms</span></div>
-          <div class="cm-cell bad"><b>0</b><span>FN · fraud missed</span></div>
-          <div class="cm-cell ok"><b>2</b><span>TN · genuine passed</span></div>
-        </div>
-        <p class="cm-pr">Precision <b>0.63</b> (5/8) · Recall <b>1.00</b> (5/5)</p>
-      </div>
-    </div>
+    <div class="cm-tiles" id="cmTiles"></div>
     <p class="stage-note">Overall on the 30: <b>accuracy 0.867</b> (26/30) · <b>recall 1.000</b>
       (15/15 — no fraud message was missed) · precision 0.79 (15/19). Every error is a false alarm
       on a genuine alert-style message — annoying, not dangerous, and exactly the class more real

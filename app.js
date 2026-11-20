@@ -203,7 +203,7 @@
   if (resetBtn) resetBtn.addEventListener("click", function () {
     if (running) return;
     $("j-text").value = SAMPLES.en_fraud;
-    J.res = null; J.stage = -1; J.whySignals = [];
+    J.res = null; J.stage = -1; J.whySignals = []; J.tokSub = 0; J.tokGen++;
     updateStageBar(-1);
     var cbR = $("j-copy"); if (cbR) cbR.hidden = true;
     document.querySelectorAll(".pdot").forEach(function (d) { d.classList.remove("active", "done"); });
@@ -420,43 +420,119 @@
     renderPpSteps(res);
   }
 
+  /* ---- Stage 2, rebuilt as ONE panel of three rows fed by the real
+     tokenizer output: Words -> WordPiece pieces -> Token IDs. The rows
+     reveal in that order as the journey progresses through the stage:
+     auto-play advances them on timers, the Next/Back buttons step them
+     manually; the final state shows all three rows. ---- */
+  function tokGroups(pieces) {
+    // group piece indices by word: a ## piece continues the previous group;
+    // [CLS] / [SEP] stand alone as special groups.
+    var groups = [];
+    pieces.forEach(function (pc, i) {
+      if (pc === "[CLS]" || pc === "[SEP]") { groups.push({ special: pc, idxs: [i] }); return; }
+      var last = groups[groups.length - 1];
+      if (pc.indexOf("##") === 0 && last && !last.special) last.idxs.push(i);
+      else groups.push({ idxs: [i] });
+    });
+    return groups;
+  }
+  function applyTokSub() {
+    document.querySelectorAll("#stage-2 .tok-row").forEach(function (row) {
+      var r = parseInt(row.getAttribute("data-tokrow"), 10);
+      row.classList.toggle("on", r <= J.tokSub);
+      row.classList.toggle("focus", r === J.tokSub);
+    });
+    if (J.stage === 2 && J.tokSub >= 1) {
+      var names = ["", "Words", "WordPiece pieces", "Token IDs"];
+      var lbl = $("j-step-label");
+      if (lbl) lbl.textContent = "Stage 3 of 8 — Tokenize · step " + J.tokSub + " of 3: " + names[J.tokSub];
+    }
+  }
+  function setTokSub(n) {
+    J.tokSub = Math.max(1, Math.min(3, n));
+    applyTokSub();
+  }
   function renderTokens(res) {
-    var tEl = $("j-tokens"), mEl = $("j-idmap"), iEl = $("j-ids"), pEl = $("j-pad");
+    var wEl = $("j-tok-words"), pEl2 = $("j-tok-pieces"), iEl = $("j-tok-ids"), pEl = $("j-pad");
+    if (!wEl || !pEl2 || !iEl) return;
+    if (J.tokSub < 1) J.tokSub = 1;
     if (!res.enc) {
-      // vocabulary still loading: honest simplified stand-in for a moment
+      // vocabulary still loading: honest simplified stand-in for a moment —
+      // same three rows, words chunked naively until the real pieces land
       var words = res.anon.split(/\s+/).filter(Boolean).slice(0, 60);
-      var h0 = '<span class="tok special">[CLS]</span>';
-      words.forEach(function (w, wi) {
+      var fPieces = ["[CLS]"], fWords = [];
+      words.forEach(function (w) {
         var clean = w.replace(/[^\p{L}\p{N}\[\]]/gu, "");
         if (!clean) return;
-        if (clean.length <= 5) { h0 += '<span class="tok">' + clean + "</span>"; return; }
-        for (var i = 0; i < clean.length; i += 4) h0 += '<span class="tok">' + (i ? "##" : "") + clean.slice(i, i + 4) + "</span>";
+        fWords.push(clean);
+        if (clean.length <= 5) { fPieces.push(clean); return; }
+        for (var i = 0; i < clean.length; i += 4) fPieces.push((i ? "##" : "") + clean.slice(i, i + 4));
       });
-      h0 += '<span class="tok special">[SEP]</span>';
-      tEl.innerHTML = h0;
-      mEl.innerHTML = '<span class="idchip more">Loading the real 197,258-entry vocabulary…</span>';
-      iEl.innerHTML = ""; pEl.innerHTML = "";
+      fPieces.push("[SEP]");
+      var fGroups = tokGroups(fPieces);
+      wEl.innerHTML = fWords.map(function (w) { return '<span class="tk-group"><span class="tk-word">' + esc(w) + "</span></span>"; }).join("");
+      pEl2.innerHTML = fGroups.map(function (g) {
+        return '<span class="tk-group">' + g.idxs.map(function (ix) {
+          var pc = fPieces[ix];
+          var cls = g.special ? "tk-piece special" : (pc.indexOf("##") === 0 ? "tk-piece cont" : "tk-piece");
+          return '<span class="' + cls + '">' + esc(pc) + "</span>";
+        }).join("") + "</span>";
+      }).join("");
+      iEl.innerHTML = '<span class="tk-group"><span class="tk-id more">Loading the real 197,258-entry vocabulary…</span></span>';
+      if (pEl) pEl.innerHTML = "";
+      applyTokSub();
       loadTokenizer();
       return;
     }
     var pieces = res.enc.pieces, ids = res.enc.ids;
-    var html = "";
-    pieces.forEach(function (pc, i) {
-      var special = pc === "[CLS]" || pc === "[SEP]" || pc === "[PAD]";
-      html += '<span class="tok' + (special ? " special" : "") + '" style="animation-delay:' + (i * 35) + 'ms">' + esc(pc) + "</span>";
-    });
-    tEl.innerHTML = html;
-    var n = Math.min(pieces.length, 28), map = "";
-    for (var a = 0; a < n; a++) map += '<span class="idchip">' + esc(pieces[a]) + " <b>\u2192 " + ids[a] + "</b></span>";
-    if (pieces.length > n) map += '<span class="idchip more">\u2026 +' + (pieces.length - n) + " more pieces</span>";
-    mEl.innerHTML = map;
-    var m = Math.min(ids.length, 32), seq = "";
-    for (var b = 0; b < m; b++) seq += '<span class="idcell">' + ids[b] + "</span>";
-    if (ids.length > m) seq += '<span class="idcell more">\u2026</span>';
-    iEl.innerHTML = seq;
+    var groups = tokGroups(pieces);
+    // Row 1 — words: each group rejoined (## stripped); specials are not words
+    wEl.innerHTML = groups.filter(function (g) { return !g.special; }).map(function (g) {
+      var word = g.idxs.map(function (ix) { return pieces[ix].replace(/^##/, ""); }).join("");
+      return '<span class="tk-group"><span class="tk-word">' + esc(word) + "</span></span>";
+    }).join("");
+    // Row 2 — pieces, grouped by word; ## continuations shaded; specials distinct
+    pEl2.innerHTML = groups.map(function (g) {
+      return '<span class="tk-group">' + g.idxs.map(function (ix) {
+        var pc = pieces[ix];
+        var cls = g.special ? "tk-piece special" : (pc.indexOf("##") === 0 ? "tk-piece cont" : "tk-piece");
+        return '<span class="' + cls + '" data-i="' + ix + '" style="animation-delay:' + Math.min(ix * 28, 840) + 'ms">' + esc(pc) + "</span>";
+      }).join("") + "</span>";
+    }).join("");
+    // Row 3 — one ID per piece, same groups, same order; then ONE pad tail chip
     var pad = Math.max(0, 128 - ids.length);
-    pEl.innerHTML = "<b>" + ids.length + "</b> real tokens (attention mask = 1) \u00b7 <b>" + pad + "</b> \u00d7 [PAD] (id 0, mask = 0) \u2192 final length <b>128</b>, exactly the model's input shape" +
-      (ids.length >= 128 ? " — this message hit the cap, so it was truncated, keeping [SEP] last" : "");
+    iEl.innerHTML = groups.map(function (g) {
+      return '<span class="tk-group">' + g.idxs.map(function (ix) {
+        return '<span class="tk-id" data-i="' + ix + '" style="animation-delay:' + Math.min(ix * 28, 840) + 'ms">' + ids[ix] + "</span>";
+      }).join("") + "</span>";
+    }).join("") + (pad > 0
+      ? '<span class="tk-group pad-tail"><span class="tk-id more">+' + pad + " [PAD] \u2192 length 128</span></span>"
+      : '<span class="tk-group pad-tail"><span class="tk-id more">capped at 128 — truncated, [SEP] kept last</span></span>');
+    if (pEl) pEl.innerHTML = "<b>" + ids.length + "</b> real tokens (attention mask = 1) \u00b7 <b>" + pad + "</b> \u00d7 [PAD] (id 0, mask = 0) \u2192 the model's input is always exactly <b>128</b> long";
+    applyTokSub();
+    // auto-play: walk the rows down while the stage dwells on screen
+    if (running) {
+      var gen = ++J.tokGen;
+      [2, 3].forEach(function (target, k) {
+        setTimeout(function () {
+          if (gen !== J.tokGen || J.stage !== 2 || !running) return;
+          if (J.tokSub < target) setTokSub(target);
+        }, (850 * (k + 1)) / speed());
+      });
+    }
+  }
+  /* hover a piece or an ID chip -> its pair lights up */
+  var tokPanel = $("j-tokpanel");
+  if (tokPanel) {
+    tokPanel.addEventListener("mouseover", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest("[data-i]") : null;
+      tokPanel.querySelectorAll(".pair").forEach(function (x) { x.classList.remove("pair"); });
+      if (t) tokPanel.querySelectorAll('[data-i="' + t.getAttribute("data-i") + '"]').forEach(function (x) { x.classList.add("pair"); });
+    });
+    tokPanel.addEventListener("mouseleave", function () {
+      tokPanel.querySelectorAll(".pair").forEach(function (x) { x.classList.remove("pair"); });
+    });
   }
 
   function miniVec(seedNum) {
@@ -586,15 +662,15 @@
   }
 
   /* Step-by-step journey controller: Auto-play, or press Next stage by stage. */
-  var J = { res: null, stage: -1 };
+  var J = { res: null, stage: -1, tokSub: 0, tokGen: 0 };
   function prepareJourney() {
     var raw = $("j-text").value.trim();
     if (!raw) return null;
     if (!MODEL) { alert("The model file is still loading — give it a second and try again."); return null; }
     J.res = runModel(raw);
     if (TOK) attachTokens(J.res); else loadTokenizer();
-    ["j-conv", "j-tinput", "j-total", "j-idmap", "j-ids", "j-pad", "j-ppsteps"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
-    J.stage = -1; J.whySignals = [];
+    ["j-conv", "j-tinput", "j-total", "j-tok-words", "j-tok-pieces", "j-tok-ids", "j-pad", "j-ppsteps"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
+    J.stage = -1; J.whySignals = []; J.tokSub = 0; J.tokGen++;
     updateStageBar(-1);
     var cbP = $("j-copy"); if (cbP) cbP.hidden = true;
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
@@ -840,10 +916,14 @@
   $("j-next").addEventListener("click", function () {
     if (running) return;
     if (!J.res || J.stage >= 7) { if (!prepareJourney()) return; renderStage(0); return; }
+    // Stage 2 has three sub-steps (Words -> Pieces -> IDs): Next walks them
+    // before it moves on to Stage 3.
+    if (J.stage === 2 && J.tokSub < 3) { setTokSub(J.tokSub + 1); return; }
     renderStage(J.stage + 1);
   });
   $("j-prev").addEventListener("click", function () {
     if (running || !J.res || J.stage <= 0) return;
+    if (J.stage === 2 && J.tokSub > 1) { setTokSub(J.tokSub - 1); return; }
     renderStage(J.stage - 1);
   });
 
@@ -1108,6 +1188,67 @@
     }
   });
   document.addEventListener("dragover", function (e) { e.preventDefault(); });
+
+  /* ---------------- results: F1 bar chart + confusion-matrix tiles ----------------
+     Both plots are drawn from the verified results only — the same numbers the
+     old table and text cards carried. */
+  (function renderResults() {
+    var f1El = $("chart-f1");
+    if (f1El) {
+      var F1 = [
+        { lang: "English", lex: 0.948, full: 0.954 },
+        { lang: "Hindi", lex: 0.989, full: 0.989 },
+        { lang: "Telugu", lex: 0.900, full: 0.919 }
+      ];
+      var W = 660, H = 372, top = 24, bot = 36, left = 46, right = 8;
+      var pw = W - left - right, ph = H - top - bot;
+      var Y = function (v) { return top + (1 - v) * ph; };
+      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Grouped bar chart: real-only F1 by language, lexical arm versus full v4 stack">';
+      [0, 0.25, 0.5, 0.75, 1].forEach(function (g) {
+        var y = Y(g);
+        s += '<line class="f1-grid" x1="' + left + '" x2="' + (W - right) + '" y1="' + y + '" y2="' + y + '"/>' +
+          '<text class="f1-axis" x="' + (left - 8) + '" y="' + (y + 4) + '" text-anchor="end">' + g.toFixed(2) + "</text>";
+      });
+      var gw = pw / 3, bw = 52;
+      F1.forEach(function (d, gi) {
+        var cx = left + gw * gi + gw / 2, lx = cx - bw - 4, fx = cx + 4;
+        s += '<rect class="f1-bar lex grow" style="animation-delay:' + (gi * 120) + 'ms" x="' + lx + '" y="' + Y(d.lex) + '" width="' + bw + '" height="' + (Y(0) - Y(d.lex)) + '" rx="4"/>';
+        s += '<rect class="f1-bar full grow" style="animation-delay:' + (gi * 120 + 60) + 'ms" x="' + fx + '" y="' + Y(d.full) + '" width="' + bw + '" height="' + (Y(0) - Y(d.full)) + '" rx="4"/>';
+        s += '<text class="f1-val" x="' + (lx + bw / 2) + '" y="' + (Y(d.lex) - 7) + '">' + d.lex.toFixed(3) + "</text>";
+        s += '<text class="f1-val" x="' + (fx + bw / 2) + '" y="' + (Y(d.full) - 7) + '">' + d.full.toFixed(3) + "</text>";
+        s += '<text class="f1-lang" x="' + cx + '" y="' + (H - 12) + '">' + d.lang + "</text>";
+      });
+      s += '<line class="f1-base" x1="' + left + '" x2="' + (W - right) + '" y1="' + Y(0) + '" y2="' + Y(0) + '"/>';
+      f1El.innerHTML = s + "</svg>";
+    }
+    var cmEl = $("cmTiles");
+    if (cmEl) {
+      var CM = [
+        { lang: "English", tp: 5, fp: 0, fn: 0, tn: 5, p: 1.00, r: 1.00, ps: "5/5", rs: "5/5" },
+        { lang: "Hindi", tp: 5, fp: 1, fn: 0, tn: 4, p: 0.83, r: 1.00, ps: "5/6", rs: "5/5" },
+        { lang: "Telugu", tp: 5, fp: 3, fn: 0, tn: 2, p: 0.63, r: 1.00, ps: "5/8", rs: "5/5" }
+      ];
+      function cell(val, ok, label) {
+        return '<div class="cmx-cell ' + (ok ? "ok" : "bad") + '" style="--heat:' + (val / 5).toFixed(2) + '"><b>' + val + "</b><span>" + label + "</span></div>";
+      }
+      cmEl.innerHTML = CM.map(function (d) {
+        return '<div class="cm-tile"><h4>' + d.lang + ' <span class="cm-n">n = 10</span></h4>' +
+          '<div class="cmx"><span class="cmx-corner"></span>' +
+          '<span class="cmx-col">predicted<br>fraud</span><span class="cmx-col">predicted<br>genuine</span>' +
+          '<span class="cmx-row">actual<br>fraud</span>' +
+          cell(d.tp, true, "caught · TP") + cell(d.fn, false, "missed · FN") +
+          '<span class="cmx-row">actual<br>genuine</span>' +
+          cell(d.fp, false, "false alarm · FP") + cell(d.tn, true, "passed · TN") +
+          "</div>" +
+          '<div class="prbars">' +
+          '<div class="prbar"><span>Precision</span><div class="track"><div class="fill p" data-w="' + Math.round(d.p * 100) + '"></div></div><b>' + d.p.toFixed(2) + "</b></div>" +
+          '<div class="prbar"><span>Recall</span><div class="track"><div class="fill r" data-w="' + Math.round(d.r * 100) + '"></div></div><b>' + d.r.toFixed(2) + "</b></div>" +
+          '<p class="cm-frac">Precision ' + d.ps + " of predicted fraud was fraud · recall " + d.rs + " of fraud was caught</p>" +
+          "</div></div>";
+      }).join("");
+      dio.observe(cmEl);
+    }
+  })();
 
   /* ---------------- nav active state + back to top ---------------- */
   var navLinks = Array.prototype.slice.call(document.querySelectorAll(".nav .links a"));
