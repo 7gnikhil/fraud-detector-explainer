@@ -12,33 +12,69 @@
 <div class="bg-glow"></div>
 
 <nav class="nav">
-  <div class="brand">🛡️ <b>Fraud Detector</b> <span>— the model, explained</span></div>
-  <div class="links">
-    <a href="#journey">Journey</a><a href="#exploded">Architecture</a>
-    <a href="#dataset">Dataset</a><a href="#results">Evaluation</a>
-    <a href="#training">Training</a><a href="#cicd">CI/CD</a><a href="#runtime">How it runs</a>
+  <div class="nav-row">
+    <div class="brand">🛡️ <b>Fraud Detector</b> <span>— the model, explained</span></div>
+    <div class="nav-actions">
+      <a class="nav-pill ext" href="https://microsoftedge.microsoft.com/addons/detail/jkinpaedkhihmiamdboahecceebjddof" target="_blank" rel="noopener">Get Extension</a>
+      <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch between day and night theme">☀️ Day</button>
+    </div>
   </div>
-  <div class="nav-actions">
-    <a class="nav-pill" href="#journey">Try Demo</a>
-    <a class="nav-pill ext" href="https://microsoftedge.microsoft.com/addons/detail/jkinpaedkhihmiamdboahecceebjddof" target="_blank" rel="noopener">Get Extension</a>
+  <div class="tabbar" role="tablist" aria-label="Site sections">
+    <button class="tab-btn" type="button" role="tab" data-tab="check" aria-selected="true">🔍 Check</button>
+    <button class="tab-btn" type="button" role="tab" data-tab="how" aria-selected="false">🛣️ How it works</button>
+    <button class="tab-btn" type="button" role="tab" data-tab="results" aria-selected="false">📊 Results</button>
+    <button class="tab-btn" type="button" role="tab" data-tab="data" aria-selected="false">🗄️ The data</button>
+    <button class="tab-btn" type="button" role="tab" data-tab="ships" aria-selected="false">🔁 How it ships</button>
   </div>
-  <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch between day and night theme">☀️ Day</button>
 </nav>
 
 <div id="stage-bar" aria-hidden="true"><span id="stage-bar-text"></span><div class="stage-bar-track"><div id="stage-bar-fill"></div></div></div>
 
-<header class="hero">
+<main>
+<div class="tab-panel" id="panel-check" data-panel="check">
+<div class="check-hero hero">
   <canvas id="nn-hero"></canvas>
-  <div class="hero-inner">
+  <div class="check-inner">
     <div class="kicker">MINI PROJECT · MULTILINGUAL FRAUD DETECTION · TELUGU · HINDI · ENGLISH</div>
-    <h1>One message in.<br>A verdict out.<br><span class="grad">Every step, animated.</span></h1>
-    <p class="hero-sub">This page takes our fraud-detection model apart like an exploded view of a
-      machine — the dataset, the preprocessing, the MuRIL neural network, the classifier —
-      and then runs a <b>real message</b> through it, live, in your browser.</p>
-    <div class="hero-cta">
-      <a class="btn primary" href="#journey">▶ Run a message through the model</a>
-      <a class="btn ext" href="https://microsoftedge.microsoft.com/addons/detail/jkinpaedkhihmiamdboahecceebjddof" target="_blank" rel="noopener">🧩 Install Edge Extension</a>
-      <a class="btn ghost" href="#exploded">🔩 Open the exploded view</a>
+    <h1 class="check-title">Got a suspicious message?<br>Check it here — <span class="grad">free, private,<br>nothing is uploaded.</span></h1>
+    <div class="card checker-card" id="checker">
+      <label class="ck-label" for="ck-text">Paste the message — an SMS, a WhatsApp forward, an email:</label>
+      <textarea id="ck-text" rows="3">Congratulations! You have won a cash prize of Rs 50,000 in the lucky draw. Click http://claim-prize-now.xyz and share the OTP sent to your mobile to receive the amount today itself.</textarea>
+      <button id="ck-check" class="btn check-big" type="button">🔍 Check this message</button>
+      <div class="sample-row ck-row">
+        <span class="ck-row-label">Try an example:</span>
+        <button class="chip-btn" data-ck-sample="en_fraud">🇬🇧 Scam — prize + OTP</button>
+      <button class="chip-btn" data-ck-sample="en_safe">🇬🇧 Genuine bank alert</button>
+      <button class="chip-btn" data-ck-sample="hi_fraud">🇮🇳 धोखाधड़ी — KYC धमकी</button>
+      <button class="chip-btn" data-ck-sample="hi_safe">🇮🇳 असली — बिल जमा</button>
+      <button class="chip-btn" data-ck-sample="te_fraud">🇮🇳 మోసం — లాటరీ</button>
+      <button class="chip-btn" data-ck-sample="te_safe">🇮🇳 నిజమైన — రీఛార్జ్</button>
+      </div>
+      <div class="sample-row ck-row">
+        <span class="ck-row-label">🧪 Tricky ones:</span>
+        <button class="chip-btn" data-ck-adv="te_roman">Telugu in English letters</button>
+      <button class="chip-btn" data-ck-adv="hinglish">Hinglish fraud</button>
+      <button class="chip-btn" data-ck-adv="typos">Deliberate spelling mistakes</button>
+      <button class="chip-btn" data-ck-adv="emoji">Emoji-heavy fraud</button>
+      <button class="chip-btn" data-ck-adv="homoglyph">Lookalike (homoglyph) domain</button>
+      <button class="chip-btn" data-ck-adv="nokeywords">No classic keywords</button>
+      <button class="chip-btn" data-ck-adv="genuine_hard">Genuine alert with OTP + KYC words</button>
+      </div>
+      <p class="adv-note" id="ck-adv-note"></p>
+      <div class="privacy-card">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <div>
+        <p>Everything runs in your browser — the model on this page scores your message locally.</p>
+        <p>No message is uploaded by default. Nothing you paste here is sent anywhere.</p>
+        <p>In the extension, sharing a correction is opt-in, and the text is anonymized on your device first.</p>
+      </div>
+    </div>
+      <div class="model-label" id="ck-model-label" hidden>Live demo: lexical model (instant, in-page). The full MuRIL stack runs in the browser extension.</div>
+      <div class="verdict-card" id="ck-verdict"></div>
+      <p class="stage-note" id="ck-note"></p>
+      <button id="ck-copy" class="btn ghost copy-btn" type="button" hidden>📋 Copy result</button>
+      <div id="ck-why"></div>
+      <p class="ck-how-link">Curious how this verdict was reached? <button class="linklike" data-goto-tab="how" type="button">See how it works →</button></p>
     </div>
     <div class="chips">
       <span class="chip"><b data-count="7624">7,624</b> training messages</span>
@@ -48,10 +84,16 @@
       <span class="chip"><b data-count="239">239</b> MB model, on-device</span>
       <span class="chip"><b data-count="0">0</b> uploads by default</span>
     </div>
+  
+    <div class="hero-cta">
+      <button class="btn primary" type="button" data-focus-check>🔍 Check a message</button>
+      <a class="btn ext" href="https://microsoftedge.microsoft.com/addons/detail/jkinpaedkhihmiamdboahecceebjddof" target="_blank" rel="noopener">🧩 Install Edge Extension</a>
+      <button class="btn ghost" type="button" data-goto-tab="how">🛣️ See how it works</button>
+    </div>
   </div>
-</header>
+</div>
 
-<section class="card reveal" id="popup-opt">
+<section class="card" id="popup-opt">
   <div class="popup-opt-row">
     <div>
       <h2>🧩 Extension popup — web edition</h2>
@@ -70,23 +112,28 @@
     floating button. Click it (or drag it anywhere) and paste a message — the verdict comes from
     the trained model loaded in your browser tab.</p>
 </section>
+</div>
 
-<section id="journey" class="reveal">
+<div class="tab-panel" id="panel-how" data-panel="how" hidden>
+<section id="journey">
   <h2 class="sec-title">🛣️ The live journey of one message</h2>
   <p class="sec-sub">Pick a message — or paste your own — and watch it travel through the exact
     pipeline the extension runs: anonymize → tokenize → convert to token IDs → detect language → embed → extract
     features → classify → verdict. The final score is computed by the <b>real trained lexical
     model</b> in your browser; nothing is uploaded.</p>
 
-  <div class="card journey-card">
-    <div class="privacy-card">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-      <div>
-        <p>Everything runs in your browser — the model on this page scores your message locally.</p>
-        <p>No message is uploaded by default. Nothing you paste here is sent anywhere.</p>
-        <p>In the extension, sharing a correction is opt-in, and the text is anonymized on your device first.</p>
+  <div class="story-intro">
+      <h1>One message in.<br>A verdict out.<br><span class="grad">Every step, animated.</span></h1>
+      <p class="hero-sub">This page takes our fraud-detection model apart like an exploded view of a
+      machine — the dataset, the preprocessing, the MuRIL neural network, the classifier —
+      and then runs a <b>real message</b> through it, live, in your browser.</p>
+      <div class="chat-wrap">
+        <div class="chat-label">📩 One morning, this message lands on someone's phone…</div>
+        <div class="chat-bubble">Congratulations! You have won a cash prize of Rs 50,000 in the lucky draw. Click http://claim-prize-now.xyz and share the OTP sent to your mobile to receive the amount today itself.<span class="chat-time">9:41 AM</span></div>
+        <p class="chat-follow">Follow this message inside the model — step by step — and watch how the machine decides what it really is.</p>
       </div>
     </div>
+    <div class="card journey-card">
     <textarea id="j-text" rows="3">Congratulations! You have won a cash prize of Rs 50,000 in the lucky draw. Click http://claim-prize-now.xyz and share the OTP sent to your mobile to receive the amount today itself.</textarea>
     <div class="sample-row">
       <button class="chip-btn" data-sample="en_fraud">🇬🇧 Scam — prize + OTP</button>
@@ -125,7 +172,10 @@
       <span class="pdot" data-stage="7">Verdict</span>
     </div>
 
+    </div>
+
     <div class="stage" id="stage-0">
+      <div class="story-head"><span class="story-emoji">📩</span><div class="story-title">Meet the message — exactly as it arrived</div></div>
       <h3><span class="stage-no">0</span> The raw message <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="raw-box" id="j-raw"></div>
       <p class="stage-note info-note">Exactly as the user received it — link, amount, urgency and all.
@@ -133,6 +183,7 @@
     </div>
 
     <div class="stage" id="stage-1">
+      <div class="story-head"><span class="story-emoji">🧹</span><div class="story-title">First, we hide the private bits</div></div>
       <h3><span class="stage-no">1</span> Preprocessing — clean &amp; anonymize <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="conv-title">The steps — the same pipeline, but each language makes it do different work</div>
       <div id="j-ppsteps"></div>
@@ -155,6 +206,7 @@
     </div>
 
     <div class="stage" id="stage-2">
+      <div class="story-head"><span class="story-emoji">🔤</span><div class="story-title">Then we chop it into pieces the model knows</div></div>
       <h3><span class="stage-no">2</span> Tokenization — WordPiece: words → pieces → numbers <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="tok-panel" id="j-tokpanel">
         <div class="tok-row" data-tokrow="1">
@@ -182,6 +234,7 @@
     </div>
 
     <div class="stage" id="stage-3">
+      <div class="story-head"><span class="story-emoji">🌐</span><div class="story-title">Which language is it? We just count the letters</div></div>
       <h3><span class="stage-no">3</span> Language detection — simple and raw <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="conv-title">The raw view — every letter of your message, painted by its script</div>
       <div class="raw-box" id="j-langraw"></div>
@@ -195,6 +248,7 @@
     </div>
 
     <div class="stage" id="stage-4">
+      <div class="story-head"><span class="story-emoji">🧠</span><div class="story-title">The brain of the model turns meaning into numbers</div></div>
       <h3><span class="stage-no">4</span> MuRIL embedding — the neural network <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="conv-title">Conversion — every token ID is replaced by its learned 768-number vector (strips compressed for display)</div>
       <div id="j-conv"></div>
@@ -219,6 +273,7 @@
     </div>
 
     <div class="stage" id="stage-5">
+      <div class="story-head"><span class="story-emoji">🚩</span><div class="story-title">We also count the warning signs</div></div>
       <h3><span class="stage-no">5</span> Lexical + structured features <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="feat-grid" id="j-feats"></div>
       <p class="stage-note info-note">Alongside the embedding, the message is hashed into
@@ -229,6 +284,7 @@
     </div>
 
     <div class="stage" id="stage-6">
+      <div class="story-head"><span class="story-emoji">🎯</span><div class="story-title">Everything gets weighed together</div></div>
       <h3><span class="stage-no">6</span> The classifier — stacked logistic regression <button class="info-btn" type="button" aria-expanded="false" title="About this stage">i</button></h3>
       <div class="meter-wrap">
         <div class="meter"><div class="band" id="j-band"></div><div class="fill" id="j-fill"></div>
@@ -244,6 +300,7 @@
     </div>
 
     <div class="stage" id="stage-7">
+      <div class="story-head"><span class="story-emoji">🏁</span><div class="story-title">Here is the verdict</div></div>
       <h3><span class="stage-no">7</span> The verdict</h3>
       <div class="model-label">Live demo: lexical model (instant, in-page). The full MuRIL stack runs in the browser extension.</div>
       <div class="verdict-card" id="j-verdict"></div>
@@ -260,10 +317,176 @@
       <button id="j-run" class="btn ghost">▶ Auto-play</button>
       <button id="j-next" class="btn primary">Next →</button>
     </div>
+</section>
+
+<section id="exploded">
+  <h2 class="sec-title">🔩 Exploded view — every component, separated</h2>
+  <p class="sec-sub">Like a technical drawing of an engine: drag the slider and the system pulls
+    itself apart — or press <b>▶ Animate</b> and watch it assemble and explode on its own. The
+    <b>flow wave</b> travels the components in the order a message does. <b>Click any component</b>
+    to inspect it. Flip the X-ray switch on MuRIL to see inside the transformer.</p>
+  <div class="story-head solo"><span class="story-emoji">🔩</span><div class="story-title">Final chapter: take the whole machine apart</div></div>
+  <div class="card">
+    <div class="explode-controls">
+      <span>Assembled</span>
+      <input type="range" id="explodeRange" min="0" max="100" value="65">
+      <span>Exploded</span>
+      <button id="explodePlay" class="btn ghost" type="button">▶ Animate</button>
+      <button id="flowBtn" class="btn ghost" type="button">🌊 Flow: on</button>
+      <label class="switch small"><input type="checkbox" id="xrayToggle">
+        <span class="track"><span class="thumb"></span></span><span class="switch-label">X-ray MuRIL</span></label>
+    </div>
+    <div id="c3d-wrap">
+      <canvas id="c3d"></canvas>
+      <div class="c3d-hint">🖱️ Drag to rotate · Scroll to zoom · Click a component in 3D — the same slider explodes it</div>
+    </div>
+    <div class="explode-stage" id="explodeStage">
+      <button class="part" data-part="dataset" style="--i:0"><span class="part-icon">🗄️</span><b>Dataset</b><small>7,624 messages</small></button>
+      <button class="part" data-part="preprocess" style="--i:1"><span class="part-icon">🧹</span><b>Preprocessing</b><small>clean + anonymize</small></button>
+      <button class="part" data-part="tokenizer" style="--i:2"><span class="part-icon">🔤</span><b>Tokenizer</b><small>WordPiece · 197k vocab</small></button>
+      <button class="part muril" data-part="muril" style="--i:3"><span class="part-icon">🧠</span><b>MuRIL</b><small>12-layer transformer</small>
+        <span class="xray-layers" id="xrayLayers"></span></button>
+      <button class="part" data-part="features" style="--i:4"><span class="part-icon">🧮</span><b>Features</b><small>lexical + 30 signals</small></button>
+      <button class="part" data-part="classifier" style="--i:5"><span class="part-icon">⚖️</span><b>Classifier</b><small>per-language LR stack</small></button>
+      <button class="part" data-part="threshold" style="--i:6"><span class="part-icon">🎚️</span><b>Threshold</b><small>+ uncertainty band</small></button>
+      <button class="part" data-part="runtime" style="--i:7"><span class="part-icon">🧩</span><b>Extension</b><small>on-device runtime</small></button>
+      <button class="part" data-part="feedback" style="--i:8"><span class="part-icon">🔁</span><b>Feedback loop</b><small>corrections → retrain</small></button>
+    </div>
+    <div class="part-detail" id="partDetail"></div>
   </div>
 </section>
 
-<section id="cicd" class="reveal">
+<section id="runtime">
+  <h2 class="sec-title">🚀 After training — how the model runs</h2>
+  <div class="train-flow">
+    <div class="tstep"><span>📄</span><b>In the page</b><p>Select text, right-click, drag it onto the 🛡️ button — or use the popup. The panel you see on this website is the same interface.</p></div>
+    <div class="tstep"><span>⚙️</span><b>Offscreen engine room</b><p>The extension runs ONNX Runtime Web in a hidden offscreen document: int8-quantized MuRIL (239 MB), the lexical model and the heads — all on the user’s device.</p></div>
+    <div class="tstep"><span>✍️</span><b>Corrections teach it</b><p>“It’s fraud / It’s safe” adjusts a small local adapter instantly. Sharing an anonymized copy to improve the shared model is opt-in, default OFF.</p></div>
+    <div class="tstep"><span>🔁</span><b>Retrain pipeline</b><p>Shared corrections land in a private inbox → scheduled retraining builds a challenger → it ships only if it beats the champion on fixed evaluation gates. Model updates are a small config file — the 239 MB encoder is never re-downloaded.</p></div>
+  </div>
+</section>
+</div>
+
+<div class="tab-panel" id="panel-results" data-panel="results" hidden>
+<section id="results">
+  <h2 class="sec-title">📊 Results — with their test basis printed</h2>
+  <div class="card">
+    <h3 class="chart-title">Real-only F1 by language</h3>
+    <div class="chart-legend">
+      <span><i class="swatch lex"></i>Lexical arm — runs live on this page</span>
+      <span><i class="swatch full"></i>Full v4 stack — MuRIL + lexical + structured</span>
+    </div>
+    <div id="chart-f1"></div>
+    <p class="chart-note">Test basis — lexical arm: real-only, grouped 5-fold CV · full v4 stack: real-only,
+      grouped meta-CV. The axis runs the full 0–1: no truncated scale, so a small gap looks small.
+      On a separate set of 64 genuinely unseen messages the full stack scores ≈ 81% accuracy
+      (12 errors) — hardest: genuine alert-style messages (see the challenge-set note below).</p>
+    <p class="stage-note">Read the Hindi number carefully: real Hindi data is thin (566 messages,
+      only 72 unique genuine ones), so 0.989 is a small-sample score, not a field promise.
+      Try the known hard case yourself in the journey above — the sample
+      <button class="linklike" data-sample="te_hard">“SBI debit alert (Telugu)”</button>
+      is a genuine message the lexical arm still flags. That failure is exactly what the
+      feedback loop and more real Telugu/Hindi data are for.</p>
+    <p class="stage-note">The n behind the CV scores above — real messages only:
+      <b>English 5,032</b> · <b>Hindi 248</b> · <b>Telugu 275</b> (of 7,624 training rows;
+      the rest are flagged paraphrases, never scored).</p>
+    <div class="caveat"><b>⚠️ Read the Hindi score with care.</b> Hindi’s F1 of 0.989 rests on very
+      few genuine examples — only <b>72 unique real genuine Hindi messages</b> exist in the training
+      data (248 real Hindi rows in total). Treat it as a small-sample score, not a field promise.</div>
+
+    <h3 class="ds-sub">The unseen-message test — every prediction, shown</h3>
+    <p class="stage-note">30 messages the model never trained on (10 per language, zero overlap with
+      training). Confusion matrices for the full v4 stack — no averaging hides the errors:</p>
+    <div class="cm-tiles" id="cmTiles"></div>
+    <p class="stage-note">Overall on the 30: <b>accuracy 0.867</b> (26/30) · <b>recall 1.000</b>
+      (15/15 — no fraud message was missed) · precision 0.79 (15/19). Every error is a false alarm
+      on a genuine alert-style message — annoying, not dangerous, and exactly the class more real
+      Telugu/Hindi data would fix.</p>
+    <div class="caveat challenge"><b>Challenge set: 52 of 64 correct (81.3%).</b> A second,
+      independently collected set of 64 genuinely unseen messages. It is a <b>small independent
+      set — a smoke test, not production proof</b>. Field accuracy on live traffic will differ;
+      that is why the product says UNCERTAIN instead of guessing near the line.</div>
+  </div>
+</section>
+
+<section id="limits">
+  <h2 class="sec-title">⚠️ Honest limitations</h2>
+  <div class="card limits">
+    <ul>
+      <li><b>It classifies; it cannot block.</b> It cannot stop a message, call or payment, freeze money, or file a report. If money was lost: call <b>1930</b>, report at <b>cybercrime.gov.in</b>, inform your bank.</li>
+      <li><b>A verdict is evidence, not a guarantee.</b> “Looks safe” is not proof of safety; “fraud” is not proof of a crime.</li>
+      <li><b>Text only.</b> No inbox scanning, no WhatsApp/calls, no screenshots, QR codes, voice notes, or link destinations.</li>
+      <li><b>Three languages only</b> — Telugu, Hindi, English (incl. Hinglish / Romanized Telugu).</li>
+      <li><b>New scams can slip through</b> until corrections retrain the model; borderline scores return UNCERTAIN by design.</li>
+      <li><b>Training data is thinner than we want</b>, above all genuine Hindi/Telugu messages — field accuracy will differ from test numbers.</li>
+      <li><b>Not a government body. Not legal advice.</b> Official routes: 1930 and cybercrime.gov.in.</li>
+    </ul>
+    <div class="not-box">
+      <h3>What this tool is not</h3>
+      <ul>
+        <li><b>Not a blocker.</b> It does not block, delete or stop messages — it only labels them.</li>
+        <li><b>Not a bank or an authority.</b> It never asks for your OTP or PIN — any message that does ask is itself a red flag.</li>
+        <li><b>Not a guarantee.</b> On a hard set of unseen messages it gets about 4 in 5 right, and it is weakest on genuine alert-style Telugu and Hindi messages.</li>
+        <li><b>Not proof of safety.</b> A “genuine” verdict is not proof that a message is safe.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</div>
+
+<div class="tab-panel" id="panel-data" data-panel="data" hidden>
+<section id="dataset">
+  <h2 class="sec-title">🗄️ The dataset — real messages, balanced by hand</h2>
+  <p class="sec-sub">Collected from real Indian fraud reports and genuine notifications —
+    government &amp; TRAI advisories, Truecaller reports, consumer-complaint posts, news quotes —
+    every row checked for duplicates, fraud kept only when a real scam cue is present
+    (prize lure, block/KYC threat, OTP request, upfront fee, impersonation + payment demand).
+    Awareness messages that merely <i>describe</i> a scam are labelled genuine.</p>
+  <div class="card">
+    <div class="ds-bars" id="dsBars"></div>
+    <div class="ds-facts">
+      <div><b>1 : 1</b><span>fraud : genuine balance, per language — the model can’t win by guessing one class</span></div>
+      <div><b>5,555 real + 2,069 synthetic</b><span>synthetic rows are paraphrases of real seeds only, flagged, and never allowed in the test set</span></div>
+      <div><b>Skeleton grouping</b><span>messages sharing a template skeleton stay in the same fold — near-copies can’t leak across train/test</span></div>
+      <div><b>Placeholders in training too</b><span>[PHONE] · [OTP] · [URL] — the model learns the <i>shape</i> of a scam, not anyone’s real number</span></div>
+    </div>
+    <h3 class="ds-sub">Dataset explorer — real vs paraphrase, per language</h3>
+    <p class="stage-note">Real messages are scarce in Hindi and Telugu, so those languages lean on
+      flagged paraphrases of real seeds. The counts below are the actual training file, row by row:</p>
+    <div class="ds-bars" id="dsBars2"></div>
+    <h3 class="ds-sub">Sample rows — real messages, anonymized exactly as in training</h3>
+    <div class="ds-samples">
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">English</span><span class="tag fraud">fraud</span></div><p>Your bank KYC expires today. Your account will be blocked. Verify immediately.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">English</span><span class="tag genuine">genuine</span></div><p>This is a reminder from Axis Bank. Kindly complete your KYC update to avoid account restrictions.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Hindi</span><span class="tag fraud">fraud</span></div><p>प्रिय ग्राहक आपका SBI बैंक अकाउंट ब्लॉक कर दिया गया है. कृपया अपने डॉक्यूमेंटस अपडेट करें SBI की वेबसाइट पर विजिट करें. यहां दिए गए लिंक पर क्लिक कर नेट बैंकिंग से अपडेट करें.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Hindi</span><span class="tag genuine">genuine</span></div><p>Namaste, aapka PF wthdrawal status renew kar diya gaya hai. EPFO member portal par check karein.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Telugu</span><span class="tag fraud">fraud</span></div><p>మీ SBI అకౌంట్ బ్లాక్ అయ్యింది, వెంటనే ఈ లింక్ క్లిక్ చేసి PAN అప్డేట్ చేయండి</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Telugu</span><span class="tag genuine">genuine</span></div><p>హాయ్, మీ ఎయిర్టెల్ నెంబర్ [PHONE] కు 399 రూపాయల రీఛార్జ్ విజయవంతంగా జమ చేయబడింది,దానితో పాటు వాలిడిటీ 22-12-[OTP] వరుకు పొడిగించబడింది.</p></div>
+    </div>
+    <p class="stage-note">Placeholders like [PHONE] and [OTP] above are the training anonymizer’s own
+      replacements — the model trains on these masked forms, never on anyone’s real number.</p>
+  </div>
+</section>
+
+<section id="training">
+  <h2 class="sec-title">🏋️ How it was trained</h2>
+  <div class="train-flow">
+    <div class="tstep"><span>1</span><b>Split first</b><p>5-fold Stratified Group cross-validation per language — five 80:20 rounds, class ratio held at 50:50, skeletons grouped.</p></div>
+    <div class="tstep"><span>2</span><b>Augment after the split</b><p>Paraphrase augmentation touches training folds only. The test fold stays 100% real.</p></div>
+    <div class="tstep"><span>3</span><b>Extract</b><p>Frozen MuRIL → 768-dim vectors; hashed lexical features; 30 structured signals; scalers fit on train folds only.</p></div>
+    <div class="tstep"><span>4</span><b>Fit one head per language</b><p>Logistic regression per language; synthetic rows weigh 0.5; class weights instead of SMOTE.</p></div>
+    <div class="tstep"><span>5</span><b>Tune thresholds honestly</b><p>Per-language thresholds + ±0.08 uncertainty band, chosen on out-of-fold scores — then frozen before the challenge test.</p></div>
+  </div>
+  <p class="sec-sub">Seven classifier families raced for the head (logistic regression, linear &amp;
+    RBF SVM, random forest, XGBoost, MLP, kNN) — logistic regression kept the best
+    precision/simplicity balance per language. An earlier fine-tuned model once scored a perfect
+    1.00 — and turned out to be leaking; it was discarded. <b>Near-perfect scores are treated as
+    a leakage alarm here, not a result.</b></p>
+</section>
+</div>
+
+<div class="tab-panel" id="panel-ships" data-panel="ships" hidden>
+<section id="cicd">
   <h2 class="sec-title">🔁 CI/CD — how the system ships &amp; improves</h2>
   <p class="sec-sub">The model is only half the system. Around it runs a delivery pipeline: every
     code change is tested automatically, the backend deploys itself, the extension ships as a
@@ -306,165 +529,14 @@
   </div>
 </section>
 
-<section id="exploded" class="reveal">
-  <h2 class="sec-title">🔩 Exploded view — every component, separated</h2>
-  <p class="sec-sub">Like a technical drawing of an engine: drag the slider and the system pulls
-    itself apart — or press <b>▶ Animate</b> and watch it assemble and explode on its own. The
-    <b>flow wave</b> travels the components in the order a message does. <b>Click any component</b>
-    to inspect it. Flip the X-ray switch on MuRIL to see inside the transformer.</p>
-  <div class="card">
-    <div class="explode-controls">
-      <span>Assembled</span>
-      <input type="range" id="explodeRange" min="0" max="100" value="65">
-      <span>Exploded</span>
-      <button id="explodePlay" class="btn ghost" type="button">▶ Animate</button>
-      <button id="flowBtn" class="btn ghost" type="button">🌊 Flow: on</button>
-      <label class="switch small"><input type="checkbox" id="xrayToggle">
-        <span class="track"><span class="thumb"></span></span><span class="switch-label">X-ray MuRIL</span></label>
-    </div>
-    <div id="c3d-wrap">
-      <canvas id="c3d"></canvas>
-      <div class="c3d-hint">🖱️ Drag to rotate · Scroll to zoom · Click a component in 3D — the same slider explodes it</div>
-    </div>
-    <div class="explode-stage" id="explodeStage">
-      <button class="part" data-part="dataset" style="--i:0"><span class="part-icon">🗄️</span><b>Dataset</b><small>7,624 messages</small></button>
-      <button class="part" data-part="preprocess" style="--i:1"><span class="part-icon">🧹</span><b>Preprocessing</b><small>clean + anonymize</small></button>
-      <button class="part" data-part="tokenizer" style="--i:2"><span class="part-icon">🔤</span><b>Tokenizer</b><small>WordPiece · 197k vocab</small></button>
-      <button class="part muril" data-part="muril" style="--i:3"><span class="part-icon">🧠</span><b>MuRIL</b><small>12-layer transformer</small>
-        <span class="xray-layers" id="xrayLayers"></span></button>
-      <button class="part" data-part="features" style="--i:4"><span class="part-icon">🧮</span><b>Features</b><small>lexical + 30 signals</small></button>
-      <button class="part" data-part="classifier" style="--i:5"><span class="part-icon">⚖️</span><b>Classifier</b><small>per-language LR stack</small></button>
-      <button class="part" data-part="threshold" style="--i:6"><span class="part-icon">🎚️</span><b>Threshold</b><small>+ uncertainty band</small></button>
-      <button class="part" data-part="runtime" style="--i:7"><span class="part-icon">🧩</span><b>Extension</b><small>on-device runtime</small></button>
-      <button class="part" data-part="feedback" style="--i:8"><span class="part-icon">🔁</span><b>Feedback loop</b><small>corrections → retrain</small></button>
-    </div>
-    <div class="part-detail" id="partDetail"></div>
+  <div class="card privacy-summary">
+    <h3>🔒 Private by design</h3>
+    <p>Everything runs in your browser — the model on this page scores your message locally.</p>
+    <p>No message is uploaded by default. Nothing you paste here is sent anywhere.</p>
+    <p>In the extension, sharing a correction is opt-in, and the text is anonymized on your device first.</p>
   </div>
-</section>
-
-<section id="dataset" class="reveal">
-  <h2 class="sec-title">🗄️ The dataset — real messages, balanced by hand</h2>
-  <p class="sec-sub">Collected from real Indian fraud reports and genuine notifications —
-    government &amp; TRAI advisories, Truecaller reports, consumer-complaint posts, news quotes —
-    every row checked for duplicates, fraud kept only when a real scam cue is present
-    (prize lure, block/KYC threat, OTP request, upfront fee, impersonation + payment demand).
-    Awareness messages that merely <i>describe</i> a scam are labelled genuine.</p>
-  <div class="card">
-    <div class="ds-bars" id="dsBars"></div>
-    <div class="ds-facts">
-      <div><b>1 : 1</b><span>fraud : genuine balance, per language — the model can’t win by guessing one class</span></div>
-      <div><b>5,555 real + 2,069 synthetic</b><span>synthetic rows are paraphrases of real seeds only, flagged, and never allowed in the test set</span></div>
-      <div><b>Skeleton grouping</b><span>messages sharing a template skeleton stay in the same fold — near-copies can’t leak across train/test</span></div>
-      <div><b>Placeholders in training too</b><span>[PHONE] · [OTP] · [URL] — the model learns the <i>shape</i> of a scam, not anyone’s real number</span></div>
-    </div>
-    <h3 class="ds-sub">Dataset explorer — real vs paraphrase, per language</h3>
-    <p class="stage-note">Real messages are scarce in Hindi and Telugu, so those languages lean on
-      flagged paraphrases of real seeds. The counts below are the actual training file, row by row:</p>
-    <div class="ds-bars" id="dsBars2"></div>
-    <h3 class="ds-sub">Sample rows — real messages, anonymized exactly as in training</h3>
-    <div class="ds-samples">
-      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">English</span><span class="tag fraud">fraud</span></div><p>Your bank KYC expires today. Your account will be blocked. Verify immediately.</p></div>
-      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">English</span><span class="tag genuine">genuine</span></div><p>This is a reminder from Axis Bank. Kindly complete your KYC update to avoid account restrictions.</p></div>
-      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Hindi</span><span class="tag fraud">fraud</span></div><p>प्रिय ग्राहक आपका SBI बैंक अकाउंट ब्लॉक कर दिया गया है. कृपया अपने डॉक्यूमेंटस अपडेट करें SBI की वेबसाइट पर विजिट करें. यहां दिए गए लिंक पर क्लिक कर नेट बैंकिंग से अपडेट करें.</p></div>
-      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Hindi</span><span class="tag genuine">genuine</span></div><p>Namaste, aapka PF wthdrawal status renew kar diya gaya hai. EPFO member portal par check karein.</p></div>
-      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Telugu</span><span class="tag fraud">fraud</span></div><p>మీ SBI అకౌంట్ బ్లాక్ అయ్యింది, వెంటనే ఈ లింక్ క్లిక్ చేసి PAN అప్డేట్ చేయండి</p></div>
-      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Telugu</span><span class="tag genuine">genuine</span></div><p>హాయ్, మీ ఎయిర్టెల్ నెంబర్ [PHONE] కు 399 రూపాయల రీఛార్జ్ విజయవంతంగా జమ చేయబడింది,దానితో పాటు వాలిడిటీ 22-12-[OTP] వరుకు పొడిగించబడింది.</p></div>
-    </div>
-    <p class="stage-note">Placeholders like [PHONE] and [OTP] above are the training anonymizer’s own
-      replacements — the model trains on these masked forms, never on anyone’s real number.</p>
-  </div>
-</section>
-
-<section id="training" class="reveal">
-  <h2 class="sec-title">🏋️ How it was trained</h2>
-  <div class="train-flow">
-    <div class="tstep"><span>1</span><b>Split first</b><p>5-fold Stratified Group cross-validation per language — five 80:20 rounds, class ratio held at 50:50, skeletons grouped.</p></div>
-    <div class="tstep"><span>2</span><b>Augment after the split</b><p>Paraphrase augmentation touches training folds only. The test fold stays 100% real.</p></div>
-    <div class="tstep"><span>3</span><b>Extract</b><p>Frozen MuRIL → 768-dim vectors; hashed lexical features; 30 structured signals; scalers fit on train folds only.</p></div>
-    <div class="tstep"><span>4</span><b>Fit one head per language</b><p>Logistic regression per language; synthetic rows weigh 0.5; class weights instead of SMOTE.</p></div>
-    <div class="tstep"><span>5</span><b>Tune thresholds honestly</b><p>Per-language thresholds + ±0.08 uncertainty band, chosen on out-of-fold scores — then frozen before the challenge test.</p></div>
-  </div>
-  <p class="sec-sub">Seven classifier families raced for the head (logistic regression, linear &amp;
-    RBF SVM, random forest, XGBoost, MLP, kNN) — logistic regression kept the best
-    precision/simplicity balance per language. An earlier fine-tuned model once scored a perfect
-    1.00 — and turned out to be leaking; it was discarded. <b>Near-perfect scores are treated as
-    a leakage alarm here, not a result.</b></p>
-</section>
-
-<section id="runtime" class="reveal">
-  <h2 class="sec-title">🚀 After training — how the model runs</h2>
-  <div class="train-flow">
-    <div class="tstep"><span>📄</span><b>In the page</b><p>Select text, right-click, drag it onto the 🛡️ button — or use the popup. The panel you see on this website is the same interface.</p></div>
-    <div class="tstep"><span>⚙️</span><b>Offscreen engine room</b><p>The extension runs ONNX Runtime Web in a hidden offscreen document: int8-quantized MuRIL (239 MB), the lexical model and the heads — all on the user’s device.</p></div>
-    <div class="tstep"><span>✍️</span><b>Corrections teach it</b><p>“It’s fraud / It’s safe” adjusts a small local adapter instantly. Sharing an anonymized copy to improve the shared model is opt-in, default OFF.</p></div>
-    <div class="tstep"><span>🔁</span><b>Retrain pipeline</b><p>Shared corrections land in a private inbox → scheduled retraining builds a challenger → it ships only if it beats the champion on fixed evaluation gates. Model updates are a small config file — the 239 MB encoder is never re-downloaded.</p></div>
-  </div>
-</section>
-
-<section id="results" class="reveal">
-  <h2 class="sec-title">📊 Results — with their test basis printed</h2>
-  <div class="card">
-    <h3 class="chart-title">Real-only F1 by language</h3>
-    <div class="chart-legend">
-      <span><i class="swatch lex"></i>Lexical arm — runs live on this page</span>
-      <span><i class="swatch full"></i>Full v4 stack — MuRIL + lexical + structured</span>
-    </div>
-    <div id="chart-f1"></div>
-    <p class="chart-note">Test basis — lexical arm: real-only, grouped 5-fold CV · full v4 stack: real-only,
-      grouped meta-CV. The axis runs the full 0–1: no truncated scale, so a small gap looks small.
-      On a separate set of 64 genuinely unseen messages the full stack scores ≈ 81% accuracy
-      (12 errors) — hardest: genuine alert-style messages (see the challenge-set note below).</p>
-    <p class="stage-note">Read the Hindi number carefully: real Hindi data is thin (566 messages,
-      only 72 unique genuine ones), so 0.989 is a small-sample score, not a field promise.
-      Try the known hard case yourself in the journey above — the sample
-      <button class="linklike" data-sample="te_hard">“SBI debit alert (Telugu)”</button>
-      is a genuine message the lexical arm still flags. That failure is exactly what the
-      feedback loop and more real Telugu/Hindi data are for.</p>
-    <p class="stage-note">The n behind the CV scores above — real messages only:
-      <b>English 5,032</b> · <b>Hindi 248</b> · <b>Telugu 275</b> (of 7,624 training rows;
-      the rest are flagged paraphrases, never scored).</p>
-    <div class="caveat"><b>⚠️ Read the Hindi score with care.</b> Hindi’s F1 of 0.989 rests on very
-      few genuine examples — only <b>72 unique real genuine Hindi messages</b> exist in the training
-      data (248 real Hindi rows in total). Treat it as a small-sample score, not a field promise.</div>
-
-    <h3 class="ds-sub">The unseen-message test — every prediction, shown</h3>
-    <p class="stage-note">30 messages the model never trained on (10 per language, zero overlap with
-      training). Confusion matrices for the full v4 stack — no averaging hides the errors:</p>
-    <div class="cm-tiles" id="cmTiles"></div>
-    <p class="stage-note">Overall on the 30: <b>accuracy 0.867</b> (26/30) · <b>recall 1.000</b>
-      (15/15 — no fraud message was missed) · precision 0.79 (15/19). Every error is a false alarm
-      on a genuine alert-style message — annoying, not dangerous, and exactly the class more real
-      Telugu/Hindi data would fix.</p>
-    <div class="caveat challenge"><b>Challenge set: 52 of 64 correct (81.3%).</b> A second,
-      independently collected set of 64 genuinely unseen messages. It is a <b>small independent
-      set — a smoke test, not production proof</b>. Field accuracy on live traffic will differ;
-      that is why the product says UNCERTAIN instead of guessing near the line.</div>
-  </div>
-</section>
-
-<section id="limits" class="reveal">
-  <h2 class="sec-title">⚠️ Honest limitations</h2>
-  <div class="card limits">
-    <ul>
-      <li><b>It classifies; it cannot block.</b> It cannot stop a message, call or payment, freeze money, or file a report. If money was lost: call <b>1930</b>, report at <b>cybercrime.gov.in</b>, inform your bank.</li>
-      <li><b>A verdict is evidence, not a guarantee.</b> “Looks safe” is not proof of safety; “fraud” is not proof of a crime.</li>
-      <li><b>Text only.</b> No inbox scanning, no WhatsApp/calls, no screenshots, QR codes, voice notes, or link destinations.</li>
-      <li><b>Three languages only</b> — Telugu, Hindi, English (incl. Hinglish / Romanized Telugu).</li>
-      <li><b>New scams can slip through</b> until corrections retrain the model; borderline scores return UNCERTAIN by design.</li>
-      <li><b>Training data is thinner than we want</b>, above all genuine Hindi/Telugu messages — field accuracy will differ from test numbers.</li>
-      <li><b>Not a government body. Not legal advice.</b> Official routes: 1930 and cybercrime.gov.in.</li>
-    </ul>
-    <div class="not-box">
-      <h3>What this tool is not</h3>
-      <ul>
-        <li><b>Not a blocker.</b> It does not block, delete or stop messages — it only labels them.</li>
-        <li><b>Not a bank or an authority.</b> It never asks for your OTP or PIN — any message that does ask is itself a red flag.</li>
-        <li><b>Not a guarantee.</b> On a hard set of unseen messages it gets about 4 in 5 right, and it is weakest on genuine alert-style Telugu and Hindi messages.</li>
-        <li><b>Not proof of safety.</b> A “genuine” verdict is not proof that a message is safe.</li>
-      </ul>
-    </div>
-  </div>
-</section>
+</div>
+</main>
 
 <footer>
   <div>

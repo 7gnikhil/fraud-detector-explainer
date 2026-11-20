@@ -809,8 +809,8 @@
       };
     } catch (e) { return null; }
   }
-  function renderWhy(res) {
-    var box = $("j-why"); if (!box) return;
+  function renderWhy(res, box) {
+    box = box || $("j-why"); if (!box) return null;
     var names = window.FraudFeatures ? window.FraudFeatures.FEATURE_NAMES : [];
     function fv(n) { var ix = names.indexOf(n); return (ix >= 0 && res.feats) ? res.feats[ix] : 0; }
     var order = ["otp_is_requested", "url_is_shortener", "url_has_ip", "mentions_prize",
@@ -848,6 +848,7 @@
     }
     html += '<p class="why-fine">Everything above is measured from this message — the structured features the pipeline computed (Stage 5) and the lexical model’s own learned word weights. Nothing is generated after the fact to justify the score.</p></div>';
     box.innerHTML = html;
+    return J.whySignals;
   }
 
   function renderStage(i) {
@@ -1384,6 +1385,177 @@
       start();
     });
   })();
+
+  /* ---------------- redesign: app-style tabs ----------------
+     One panel visible at a time; the active tab is mirrored in the URL
+     hash (#check / #how / #results / #data / #ships) so links can point
+     straight at a tab. Old section anchors (#journey, #cicd, …) route to
+     the panel that now contains them. */
+  var TAB_NAMES = ["check", "how", "results", "data", "ships"];
+  var tabBtns = Array.prototype.slice.call(document.querySelectorAll(".tab-btn"));
+  var tabPanels = {};
+  TAB_NAMES.forEach(function (n) { tabPanels[n] = $("panel-" + n); });
+  var currentTab = "check";
+
+  function panelOf(el) {
+    var p = el && el.closest ? el.closest(".tab-panel") : null;
+    return p ? p.getAttribute("data-panel") : null;
+  }
+  function showTab(name, scrollTarget) {
+    if (TAB_NAMES.indexOf(name) < 0) name = "check";
+    currentTab = name;
+    TAB_NAMES.forEach(function (n) { if (tabPanels[n]) tabPanels[n].hidden = n !== name; });
+    tabBtns.forEach(function (b) {
+      var on = b.getAttribute("data-tab") === name;
+      b.classList.toggle("active", on);
+      b.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    try { history.replaceState(null, "", "#" + name); } catch (e) {}
+    if (scrollTarget) {
+      setTimeout(function () { scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" }); }, 40);
+    } else {
+      window.scrollTo(0, 0);
+    }
+    /* canvases (nn.js / realnn.js) relayout on window resize; the 3D view
+       has its own ResizeObserver — a resize nudge wakes both up. */
+    setTimeout(function () { window.dispatchEvent(new Event("resize")); }, 30);
+  }
+  function routeHash() {
+    var h = (location.hash || "").replace(/^#/, "");
+    if (!h) return false;
+    if (TAB_NAMES.indexOf(h) >= 0) { showTab(h); return true; }
+    var el = document.getElementById(h);
+    if (el) { var p = panelOf(el); if (p) { showTab(p, el); return true; } }
+    return false;
+  }
+  tabBtns.forEach(function (b) {
+    b.addEventListener("click", function () { showTab(b.getAttribute("data-tab")); });
+  });
+  document.querySelectorAll("[data-goto-tab]").forEach(function (b) {
+    b.addEventListener("click", function () { showTab(b.getAttribute("data-goto-tab")); });
+  });
+  document.querySelectorAll("[data-focus-check]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      showTab("check", $("checker"));
+      setTimeout(function () { var t = $("ck-text"); if (t) t.focus(); }, 350);
+    });
+  });
+  /* Sample / adversarial buttons live in the Results tab too, but they load
+     the journey (How tab): switch panels first (capture phase, so this runs
+     before their own handlers scroll) or their scroll would hit a hidden
+     element. */
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest("[data-sample],[data-adv]") : null;
+    if (t && currentTab !== "how") showTab("how");
+  }, true);
+  window.addEventListener("hashchange", function () { routeHash(); });
+  if (!routeHash()) showTab("check");
+
+  /* "Show the details" — a friendly text toggle for each journey stage's
+     technical note, kept in sync with the stage's existing ⓘ button. */
+  document.querySelectorAll(".stage").forEach(function (st) {
+    var note = st.querySelector(".info-note"); if (!note) return;
+    var h3 = st.querySelector("h3"); if (!h3) return;
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "details-btn"; btn.textContent = "Show the details ▾";
+    btn.setAttribute("aria-expanded", "false");
+    h3.insertAdjacentElement("afterend", btn);
+    btn.addEventListener("click", function () {
+      var open = note.classList.toggle("open");
+      btn.textContent = open ? "Hide the details ▴" : "Show the details ▾";
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      var ib = st.querySelector(".info-btn");
+      if (ib) { ib.classList.toggle("active", open); ib.setAttribute("aria-expanded", open ? "true" : "false"); }
+    });
+  });
+
+  /* ---------------- redesign: the Check tab ----------------
+     The homepage checker: same real model (runModel), same verdict wording
+     as the journey's final stage, same why-panel — rendered immediately,
+     no stage walk. */
+  var CK = { res: null, signals: [] };
+  function verdictExpl(res) {
+    return res.zone === "fraud"
+      ? "The score cleared the " + res.det.label + " threshold (" + Math.round(res.thr * 100) + "%) with room to spare. In the extension, the panel warns the user and offers the official reporting routes."
+      : res.zone === "safe"
+      ? "The score stayed well below the " + res.det.label + " threshold (" + Math.round(res.thr * 100) + "%). Genuine-service cues (like “never share your OTP”) pull the score down — they are features, learned from real bank alerts."
+      : "The score landed inside the ±" + Math.round(MARGIN * 100) + "-point uncertainty band around the threshold — the system refuses to guess and asks for a human look. Honest over confident.";
+  }
+  function checkRun() {
+    var v = $("ck-verdict"); if (!v) return;
+    var raw = $("ck-text").value.trim();
+    var note = $("ck-note"), why = $("ck-why"), cp = $("ck-copy"), ml = $("ck-model-label");
+    why.innerHTML = ""; note.textContent = ""; cp.hidden = true; CK.res = null; CK.signals = [];
+    if (ml) ml.hidden = false;
+    if (!raw) {
+      v.className = "verdict-card show uncertain";
+      v.innerHTML = '<span class="stamp">✍️ PASTE A MESSAGE</span><span class="vmeta">Copy any SMS, WhatsApp or email text into the box above, then tap Check.</span>';
+      return;
+    }
+    if (!MODEL) {
+      v.className = "verdict-card show uncertain";
+      v.innerHTML = '<span class="stamp">⏳ ONE SECOND…</span><span class="vmeta">The model file is still loading in this page. Wait a moment and tap Check again — no verdict is shown rather than a guess.</span>';
+      return;
+    }
+    var res = runModel(raw);
+    CK.res = res;
+    var stamp = res.zone === "fraud" ? "⚠️ FRAUD" : res.zone === "safe" ? "✅ LIKELY SAFE" : "❓ UNCERTAIN";
+    v.className = "verdict-card show " + res.zone;
+    v.innerHTML = '<span class="stamp">' + stamp + '</span><span class="vmeta">' +
+      Math.round(res.p * 100) + "% fraud probability · " + res.det.label +
+      " · lexical arm live on this page (the extension stacks MuRIL embeddings on top, so its exact score can differ slightly)</span>";
+    note.textContent = verdictExpl(res);
+    cp.hidden = false; cp.textContent = "📋 Copy result";
+    CK.signals = renderWhy(res, why) || [];
+  }
+  var ckBtn = $("ck-check");
+  if (ckBtn) ckBtn.addEventListener("click", checkRun);
+  document.querySelectorAll("[data-ck-sample]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var key = b.getAttribute("data-ck-sample");
+      if (!SAMPLES[key]) return;
+      $("ck-text").value = SAMPLES[key];
+      var an = $("ck-adv-note"); if (an) an.textContent = "";
+      document.querySelectorAll("[data-ck-sample],[data-ck-adv]").forEach(function (x) { x.classList.toggle("active", x === b); });
+      checkRun();
+    });
+  });
+  document.querySelectorAll("[data-ck-adv]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var a = ADV[b.getAttribute("data-ck-adv")]; if (!a) return;
+      $("ck-text").value = a.text;
+      var an = $("ck-adv-note"); if (an) an.textContent = a.note;
+      document.querySelectorAll("[data-ck-sample],[data-ck-adv]").forEach(function (x) { x.classList.toggle("active", x === b); });
+      checkRun();
+    });
+  });
+  var ckCopy = $("ck-copy");
+  if (ckCopy) ckCopy.addEventListener("click", function () {
+    var res = CK.res; if (!res) return;
+    var label = res.zone === "fraud" ? "FRAUD" : res.zone === "safe" ? "LIKELY SAFE" : "UNCERTAIN";
+    var sig = (CK.signals && CK.signals.length) ? CK.signals.slice(0, 5).join("; ") : "no strong signals";
+    var text = "Fraud Detector — verdict: " + label + "\n" +
+      "Fraud probability: " + Math.round(res.p * 100) + "%\n" +
+      "Detected language: " + res.det.label + "\n" +
+      "Top signals: " + sig + "\n" +
+      "Scored locally in the browser by the live lexical model (fraud-detector-explainer.vercel.app). A verdict is evidence, not a guarantee.";
+    function done(ok) {
+      ckCopy.textContent = ok ? "Copied ✓" : "Copy failed";
+      setTimeout(function () { ckCopy.textContent = "📋 Copy result"; }, 1500);
+    }
+    function fallback() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta); done(!!ok);
+      } catch (e) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else { fallback(); }
+  });
 })();
 
 /* --- day / night theme toggle (persisted as localStorage fdTheme) --- */
