@@ -14,9 +14,9 @@
 <nav class="nav">
   <div class="brand">🛡️ <b>Fraud Detector</b> <span>— the model, explained</span></div>
   <div class="links">
-    <a href="#journey">Live journey</a><a href="#exploded">Exploded view</a>
-    <a href="#dataset">Dataset</a><a href="#training">Training</a>
-    <a href="#cicd">CI/CD</a><a href="#runtime">How it runs</a><a href="#results">Results</a>
+    <a href="#journey">Journey</a><a href="#exploded">Architecture</a>
+    <a href="#dataset">Dataset</a><a href="#results">Evaluation</a>
+    <a href="#training">Training</a><a href="#cicd">CI/CD</a><a href="#runtime">How it runs</a>
   </div>
   <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch between day and night theme">☀️ Day</button>
 </nav>
@@ -34,10 +34,11 @@
       <a class="btn ghost" href="#exploded">🔩 Open the exploded view</a>
     </div>
     <div class="chips">
-      <span class="chip"><b data-count="7624">0</b> training messages</span>
-      <span class="chip"><b data-count="3">0</b> languages</span>
-      <span class="chip"><b data-count="768">0</b>-dim MuRIL embeddings</span>
-      <span class="chip"><b data-count="239">0</b> MB model, on-device</span>
+      <span class="chip"><b data-count="7624">7,624</b> training messages</span>
+      <span class="chip"><b data-count="3">3</b> languages</span>
+      <span class="chip"><b data-count="768">768</b>-dim MuRIL embeddings</span>
+      <span class="chip"><b data-count="30">30</b> structured features</span>
+      <span class="chip"><b data-count="239">239</b> MB model, on-device</span>
       <span class="chip"><b data-count="0">0</b> uploads by default</span>
     </div>
   </div>
@@ -80,9 +81,22 @@
       <button class="chip-btn" data-sample="te_fraud">🇮🇳 మోసం — లాటరీ</button>
       <button class="chip-btn" data-sample="te_safe">🇮🇳 నిజమైన — రీఛార్జ్</button>
       <span class="spacer"></span>
+      <button class="chip-btn" id="j-reset" type="button" title="Clear the demo back to the default sample">⟲ Reset demo</button>
       <label class="speed">Speed
         <select id="j-speed"><option value="1">1×</option><option value="2">2×</option><option value="0.5">0.5×</option></select>
       </label>
+    </div>
+
+    <div class="adv-row">
+      <span class="adv-label">🧪 Adversarial tests — tricky variants, scored live by the same model:</span>
+      <button class="chip-btn" data-adv="te_roman">Telugu in English letters</button>
+      <button class="chip-btn" data-adv="hinglish">Hinglish fraud</button>
+      <button class="chip-btn" data-adv="typos">Deliberate spelling mistakes</button>
+      <button class="chip-btn" data-adv="emoji">Emoji-heavy fraud</button>
+      <button class="chip-btn" data-adv="homoglyph">Lookalike (homoglyph) domain</button>
+      <button class="chip-btn" data-adv="nokeywords">No classic keywords</button>
+      <button class="chip-btn" data-adv="genuine_hard">Genuine alert with OTP + KYC words</button>
+      <p class="adv-note" id="j-adv-note"></p>
     </div>
 
     <div class="progress" id="j-progress">
@@ -215,8 +229,10 @@
 
     <div class="stage" id="stage-7">
       <h3><span class="stage-no">7</span> The verdict</h3>
+      <div class="model-label">Live demo: lexical model (instant, in-page). The full MuRIL stack runs in the browser extension.</div>
       <div class="verdict-card" id="j-verdict"></div>
       <p class="stage-note" id="j-verdict-note"></p>
+      <div id="j-why"></div>
       <div class="conv-title" style="margin-top:16px">🧭 The total journey — this message, end to end</div>
       <div class="total-stack" id="j-total"></div>
     </div>
@@ -323,6 +339,21 @@
       <div><b>Skeleton grouping</b><span>messages sharing a template skeleton stay in the same fold — near-copies can’t leak across train/test</span></div>
       <div><b>Placeholders in training too</b><span>[PHONE] · [OTP] · [URL] — the model learns the <i>shape</i> of a scam, not anyone’s real number</span></div>
     </div>
+    <h3 class="ds-sub">Dataset explorer — real vs paraphrase, per language</h3>
+    <p class="stage-note">Real messages are scarce in Hindi and Telugu, so those languages lean on
+      flagged paraphrases of real seeds. The counts below are the actual training file, row by row:</p>
+    <div class="ds-bars" id="dsBars2"></div>
+    <h3 class="ds-sub">Sample rows — real messages, anonymized exactly as in training</h3>
+    <div class="ds-samples">
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">English</span><span class="tag fraud">fraud</span></div><p>Your bank KYC expires today. Your account will be blocked. Verify immediately.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">English</span><span class="tag genuine">genuine</span></div><p>This is a reminder from Axis Bank. Kindly complete your KYC update to avoid account restrictions.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Hindi</span><span class="tag fraud">fraud</span></div><p>प्रिय ग्राहक आपका SBI बैंक अकाउंट ब्लॉक कर दिया गया है. कृपया अपने डॉक्यूमेंटस अपडेट करें SBI की वेबसाइट पर विजिट करें. यहां दिए गए लिंक पर क्लिक कर नेट बैंकिंग से अपडेट करें.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Hindi</span><span class="tag genuine">genuine</span></div><p>Namaste, aapka PF wthdrawal status renew kar diya gaya hai. EPFO member portal par check karein.</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Telugu</span><span class="tag fraud">fraud</span></div><p>మీ SBI అకౌంట్ బ్లాక్ అయ్యింది, వెంటనే ఈ లింక్ క్లిక్ చేసి PAN అప్డేట్ చేయండి</p></div>
+      <div class="ds-sample"><div class="ds-tags"><span class="tag lang">Telugu</span><span class="tag genuine">genuine</span></div><p>హాయ్, మీ ఎయిర్టెల్ నెంబర్ [PHONE] కు 399 రూపాయల రీఛార్జ్ విజయవంతంగా జమ చేయబడింది,దానితో పాటు వాలిడిటీ 22-12-[OTP] వరుకు పొడిగించబడింది.</p></div>
+    </div>
+    <p class="stage-note">Placeholders like [PHONE] and [OTP] above are the training anonymizer’s own
+      replacements — the model trains on these masked forms, never on anyone’s real number.</p>
   </div>
 </section>
 
@@ -367,6 +398,56 @@
       <button class="linklike" data-sample="te_hard">“SBI debit alert (Telugu)”</button>
       is a genuine message the lexical arm still flags. That failure is exactly what the
       feedback loop and more real Telugu/Hindi data are for.</p>
+    <p class="stage-note">The n behind the CV scores above — real messages only:
+      <b>English 5,032</b> · <b>Hindi 248</b> · <b>Telugu 275</b> (of 7,624 training rows;
+      the rest are flagged paraphrases, never scored).</p>
+    <div class="caveat"><b>⚠️ Read the Hindi score with care.</b> Hindi’s F1 of 0.989 rests on very
+      few genuine examples — only <b>72 unique real genuine Hindi messages</b> exist in the training
+      data (248 real Hindi rows in total). Treat it as a small-sample score, not a field promise.</div>
+
+    <h3 class="ds-sub">The unseen-message test — every prediction, shown</h3>
+    <p class="stage-note">30 messages the model never trained on (10 per language, zero overlap with
+      training). Confusion matrices for the full v4 stack — no averaging hides the errors:</p>
+    <div class="cm-cards">
+      <div class="cm-card">
+        <h4>English <span class="cm-n">n = 10</span></h4>
+        <div class="cm-grid">
+          <div class="cm-cell ok"><b>5</b><span>TP · fraud caught</span></div>
+          <div class="cm-cell bad"><b>0</b><span>FP · false alarms</span></div>
+          <div class="cm-cell bad"><b>0</b><span>FN · fraud missed</span></div>
+          <div class="cm-cell ok"><b>5</b><span>TN · genuine passed</span></div>
+        </div>
+        <p class="cm-pr">Precision <b>1.00</b> (5/5) · Recall <b>1.00</b> (5/5)</p>
+      </div>
+      <div class="cm-card">
+        <h4>Hindi <span class="cm-n">n = 10</span></h4>
+        <div class="cm-grid">
+          <div class="cm-cell ok"><b>5</b><span>TP · fraud caught</span></div>
+          <div class="cm-cell bad"><b>1</b><span>FP · false alarms</span></div>
+          <div class="cm-cell bad"><b>0</b><span>FN · fraud missed</span></div>
+          <div class="cm-cell ok"><b>4</b><span>TN · genuine passed</span></div>
+        </div>
+        <p class="cm-pr">Precision <b>0.83</b> (5/6) · Recall <b>1.00</b> (5/5)</p>
+      </div>
+      <div class="cm-card">
+        <h4>Telugu <span class="cm-n">n = 10</span></h4>
+        <div class="cm-grid">
+          <div class="cm-cell ok"><b>5</b><span>TP · fraud caught</span></div>
+          <div class="cm-cell bad"><b>3</b><span>FP · false alarms</span></div>
+          <div class="cm-cell bad"><b>0</b><span>FN · fraud missed</span></div>
+          <div class="cm-cell ok"><b>2</b><span>TN · genuine passed</span></div>
+        </div>
+        <p class="cm-pr">Precision <b>0.63</b> (5/8) · Recall <b>1.00</b> (5/5)</p>
+      </div>
+    </div>
+    <p class="stage-note">Overall on the 30: <b>accuracy 0.867</b> (26/30) · <b>recall 1.000</b>
+      (15/15 — no fraud message was missed) · precision 0.79 (15/19). Every error is a false alarm
+      on a genuine alert-style message — annoying, not dangerous, and exactly the class more real
+      Telugu/Hindi data would fix.</p>
+    <div class="caveat challenge"><b>Challenge set: 52 of 64 correct (81.3%).</b> A second,
+      independently collected set of 64 genuinely unseen messages. It is a <b>small independent
+      set — a smoke test, not production proof</b>. Field accuracy on live traffic will differ;
+      that is why the product says UNCERTAIN instead of guessing near the line.</div>
   </div>
 </section>
 
@@ -398,6 +479,8 @@
     <span>Helpline: 1930 · cybercrime.gov.in</span>
   </div>
 </footer>
+
+<button id="back-top" type="button" title="Back to top" aria-label="Back to top">↑</button>
 
 <!-- Extension popup — web edition -->
 <div id="fd-cloud"></div>

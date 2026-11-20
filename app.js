@@ -86,6 +86,12 @@
   document.querySelectorAll(".reveal").forEach(function (el) { io.observe(el); });
 
   var counted = false;
+  function fillCounters() {
+    document.querySelectorAll("[data-count]").forEach(function (el) {
+      var target = parseInt(el.getAttribute("data-count"), 10);
+      el.textContent = target.toLocaleString("en-IN");
+    });
+  }
   var cio = new IntersectionObserver(function (es) {
     es.forEach(function (e) {
       if (!e.isIntersecting || counted) return; counted = true;
@@ -98,8 +104,11 @@
         })(t0);
       });
     });
-  }, { threshold: 0.4 });
+  }, { threshold: 0.15 });
   var heroEl = document.querySelector(".hero"); if (heroEl) cio.observe(heroEl);
+  /* Safety net: the chips carry the true values as their text, and if the
+     count-up never triggers (tall hero, no IO), snap them to the finals. */
+  setTimeout(function () { if (!counted) { counted = true; fillCounters(); } }, 2500);
 
   /* ---------------- dataset bars ---------------- */
   var DS = [
@@ -125,6 +134,28 @@
   }, { threshold: 0.3 });
   dio.observe($("dsBars"));
 
+  /* Dataset explorer: real vs synthetic rows, counted from the training file */
+  var DS2 = [
+    { name: "English — 5,570", real: 5032, syn: 538 },
+    { name: "Hindi — 1,132", real: 248, syn: 884 },
+    { name: "Telugu — 922", real: 275, syn: 647 },
+    { name: "All — 7,624", real: 5555, syn: 2069 }
+  ];
+  var ds2El = $("dsBars2");
+  if (ds2El) {
+    var ds2Html = "";
+    DS2.forEach(function (d) {
+      var tot = d.real + d.syn;
+      ds2Html += '<div class="lbar"><span>' + d.name + '</span><div class="track">' +
+        '<div class="seg-r" data-w="' + (100 * d.real / tot) + '"></div>' +
+        '<div class="seg-s" data-w="' + (100 * d.syn / tot) + '"></div></div>' +
+        '<span style="color:#94a3b8">' + d.real.toLocaleString("en-IN") + " real · " + d.syn.toLocaleString("en-IN") + " syn</span></div>";
+    });
+    ds2El.innerHTML = ds2Html +
+      '<p class="stage-note" style="margin-top:4px">🔵 real messages · ⚪ flagged paraphrases of real seeds (synthetic rows weigh 0.5 in training and are never scored).</p>';
+    dio.observe(ds2El);
+  }
+
   /* ---------------- samples wiring ---------------- */
   document.querySelectorAll("[data-sample]").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -134,6 +165,57 @@
       document.getElementById("journey").scrollIntoView({ behavior: "smooth" });
       if (key === "te_hard") setTimeout(function () { startJourney(); }, 500);
     });
+  });
+
+  /* ---------------- adversarial presets ----------------
+     Tricky variants, loaded into the journey and scored by the same live
+     model — no expected verdict is written anywhere; the model decides. */
+  var ADV = {
+    te_roman: { note: "Tests: Telugu written in Latin letters — there is no Telugu script to count, so the Romanized word list has to route it to the Telugu head.",
+      text: "Meeru, mee bank account block ayindi! KYC update cheyandi, ledante account close chestamu. Dabbulu potundi kada — ee link click chesi OTP cheppandi: http://sbi-kyc-update.xyz" },
+    hinglish: { note: "Tests: Hindi in Latin letters (Hinglish) — routed by the word list, scored by the Hindi head.",
+      text: "Sir aapka account kal band ho jayega, KYC pending hai. Abhi is link par click karke OTP batao warna paisa kat jayega: http://kyc-update-now.xyz" },
+    typos: { note: "Tests: deliberate misspellings — the word features weaken, so the character n-grams have to carry the verdict.",
+      text: "Congratulashuns! You have wone a cash prise of Rs 50,000 in the luky draw. Clik the link and shere the OTP to recieve the ammount today itself: http://claim-prse-now.xyz" },
+    emoji: { note: "Tests: emoji noise wrapped around a classic prize + OTP script.",
+      text: "🎉🎊 CONGRATULATIONS 🎊🎉 You have WON a cash prize of ₹50,000 💰 Click NOW ⏰ and share the OTP 🔢 to claim it today itself 👇 http://win-prize-now.xyz 🏆" },
+    homoglyph: { note: "Tests: the domain begins with a Cyrillic 'ѕ' that looks exactly like a Latin 's' — your eye reads sbi, the computer does not.",
+      text: "SBI Alert: Your account will be suspended today for incomplete KYC. Verify immediately at http://ѕbi-secure-login.xyz and enter the OTP sent to your mobile." },
+    nokeywords: { note: "Tests: fraud intent with no classic keywords — no OTP word, no link, no prize. Politeness as camouflage.",
+      text: "Hello, this is a message from the refunds desk. A duplicate charge of Rs 1,499 was noticed on your card this morning. To reverse it today, please confirm the 6-digit code we have just sent to your registered mobile number." },
+    genuine_hard: { note: "Tests: a genuine alert containing the scary words (OTP, KYC) — the 'do not share' and 'never asks' cues should pull the score back down.",
+      text: "HDFC Bank: Your OTP for updating KYC details on the official HDFC Bank app is 482916. It is valid for 10 minutes. Do NOT share this OTP with anyone. The bank never asks for your OTP on calls or messages." }
+  };
+  document.querySelectorAll("[data-adv]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var a = ADV[b.getAttribute("data-adv")]; if (!a) return;
+      $("j-text").value = a.text;
+      var note = $("j-adv-note"); if (note) note.textContent = a.note;
+      document.querySelectorAll("[data-adv]").forEach(function (x) { x.classList.toggle("active", x === b); });
+      document.querySelectorAll("[data-sample]").forEach(function (x) { x.classList.remove("active"); });
+      document.getElementById("journey").scrollIntoView({ behavior: "smooth" });
+      setTimeout(function () { startJourney(); }, 500);
+    });
+  });
+
+  /* ---------------- demo reset ---------------- */
+  var resetBtn = $("j-reset");
+  if (resetBtn) resetBtn.addEventListener("click", function () {
+    if (running) return;
+    $("j-text").value = SAMPLES.en_fraud;
+    J.res = null; J.stage = -1;
+    document.querySelectorAll(".pdot").forEach(function (d) { d.classList.remove("active", "done"); });
+    for (var k = 0; k <= 7; k++) { var el = $("stage-" + k); if (el) el.classList.remove("active", "done"); }
+    var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
+    $("j-verdict-note").textContent = "";
+    var w = $("j-why"); if (w) w.innerHTML = "";
+    $("j-fill").style.width = "0%"; $("j-p").textContent = "—";
+    document.querySelectorAll(".cloud-comment").forEach(function (c) { c.classList.remove("show"); });
+    document.querySelectorAll("[data-sample],[data-adv]").forEach(function (x) { x.classList.remove("active"); });
+    var an = $("j-adv-note"); if (an) an.textContent = "";
+    var lbl = $("j-step-label"); if (lbl) lbl.textContent = "Press Next to begin the journey →";
+    var nb = $("j-next"); if (nb) nb.textContent = "Next →";
+    document.getElementById("journey").scrollIntoView({ behavior: "smooth" });
   });
 
   /* ---------------- the journey ---------------- */
@@ -483,6 +565,7 @@
     J.stage = -1;
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
     $("j-verdict-note").textContent = "";
+    var wEl = $("j-why"); if (wEl) wEl.innerHTML = "";
     $("j-fill").style.width = "0%"; $("j-p").textContent = "—";
     document.querySelectorAll(".cloud-comment").forEach(function (c) { c.classList.remove("show"); });
     var lbl2 = $("j-step-label");
@@ -527,6 +610,130 @@
     if (window.FD3D) window.FD3D.setVerdict(res.zone);
   }
 
+  /* -------- Why this verdict: real signals + the model's own word weights --------
+     Everything rendered here is measured from the message itself: the structured
+     features the pipeline computed (features.js) and the lexical arm's learned
+     per-word weights (lexical.js + pwa_model.json). Nothing is invented to
+     justify the score after the fact. */
+  var WHY = {
+    otp_is_requested: ["Asks for an OTP", "the message wants the code shared, sent or entered — genuine banks never ask for an OTP"],
+    url_is_shortener: ["Shortened link", "a bit.ly-style shortener hides where the link really goes"],
+    url_has_ip: ["Link to a raw IP address", "the link points at a bare IP number instead of a bank’s domain"],
+    mentions_prize: ["Prize / lottery lure", "money or a prize you never entered to win"],
+    mentions_blocked: ["Block / suspend threat", "pressure — act now or lose the account"],
+    mentions_kyc: ["KYC pressure", "“update KYC or else” is a standard fraud script"],
+    has_url: ["Contains a link", "genuine bank alerts rarely ask you to open a link"],
+    mentions_otp: ["Mentions an OTP / code", "an OTP, PIN or verification code appears in the text"],
+    otp_word_near_digits: ["Code word next to digits", "an OTP/code word sits right beside a digit run — a code is in play"],
+    mentions_click: ["Click bait", "pushes you to click or tap through"],
+    has_long_digit_run: ["Long digit run", "10+ digits in a row — an account- or card-like number in the text"],
+    has_phone: ["Phone number to call", "scammers route victims to fake call centres"],
+    has_upi: ["UPI id present", "payment handles show up in collect-request scams"],
+    has_email: ["Email address present", "an address to reply to — or to impersonate with"],
+    has_currency: ["Money amount mentioned", "a ₹/Rs amount — bait, or a fake transaction"],
+    mentions_debit: ["Debit wording", "mimics a bank transaction alert"],
+    mentions_credit: ["Credit wording", "mimics a bank transaction alert"],
+    mentions_do_not_share: ["“Do not share” warning", "a genuine-service cue — real banks print this, and it pulls the score down", 1],
+    mentions_never_ask: ["“We never ask” warning", "a genuine-service cue — real banks print this, and it pulls the score down", 1]
+  };
+  /* Highlight patterns mirror features.js (same regex sources it tests with). */
+  var WX_PATTERNS = [
+    { kind: "url", re: /https?:\/\/\S+|www\.\S+/g },
+    { kind: "otp", re: /otp|one[-\s]?time|verification code|security code|pin\b|ఓటిపి|ఒటిపి|ओटीपी|पिन/gi },
+    { kind: "prize", re: /won|winner|prize|lottery|jackpot|గెలుచు|బహుమతి|जीत|इनाम|लॉटरी/gi },
+    { kind: "block", re: /block|suspend|freeze|deactivat|బ్లాక్|నిలిపి|ब्लॉक|बंद हो|रोक/gi },
+    { kind: "kyc", re: /kyc|केवाईसी|కేవైసీ/gi },
+    { kind: "digits", re: /\d{10,}/g }
+  ];
+  function highlightSignals(text) {
+    var segs = [], rest = String(text);
+    while (rest.length) {
+      var best = null;
+      WX_PATTERNS.forEach(function (p) {
+        p.re.lastIndex = 0;
+        var m = p.re.exec(rest);
+        if (m && m[0] && (!best || m.index < best.index || (m.index === best.index && m[0].length > best.text.length))) {
+          best = { index: m.index, text: m[0], kind: p.kind };
+        }
+      });
+      if (!best) { segs.push({ text: rest }); break; }
+      if (best.index > 0) segs.push({ text: rest.slice(0, best.index) });
+      segs.push(best);
+      rest = rest.slice(best.index + best.text.length);
+    }
+    return segs.map(function (s) {
+      return s.kind ? '<span class="wx wx-' + s.kind + '">' + esc(s.text) + "</span>" : esc(s.text);
+    }).join("");
+  }
+  /* Per-word contributions of the lexical arm: for each distinct word, its
+     learned coefficient × its share of the L2-normalised word block — the
+     same arithmetic lexical.js uses to reach the score. */
+  function topWords(res) {
+    try {
+      if (!MODEL || !window.FraudLexical) return null;
+      var cfg = MODEL.languages[res.det.head]; if (!cfg || !cfg.hash) return null;
+      var h = cfg.hash, wn = h.word_n_features || 16384;
+      var coef = new Map();
+      (h.word_coef || []).forEach(function (pr) { if (pr[1]) coef.set(pr[0], pr[1]); });
+      var toks = window.FraudLexical.wordTokens(res.anon);
+      if (!toks.length) return null;
+      var counts = new Map(), tokBin = [];
+      function bump(b) { counts.set(b, (counts.get(b) || 0) + 1); }
+      toks.forEach(function (t) { var b = window.FraudLexical.hashBin(t, wn); tokBin.push(b); bump(b); });
+      for (var i = 0; i + 1 < toks.length; i++) bump(window.FraudLexical.hashBin(toks[i] + " " + toks[i + 1], wn));
+      var norm2 = 0; counts.forEach(function (v) { norm2 += v * v; });
+      var norm = Math.sqrt(norm2); if (!norm) return null;
+      var per = new Map();
+      toks.forEach(function (t, i) {
+        var c = coef.get(tokBin[i]); if (!c) return;
+        per.set(t, (per.get(t) || 0) + c / norm);
+      });
+      var arr = [];
+      per.forEach(function (c, w) { if (Math.abs(c) >= 0.03) arr.push({ w: w, c: c }); });
+      arr.sort(function (a, b) { return Math.abs(b.c) - Math.abs(a.c); });
+      return {
+        pos: arr.filter(function (t) { return t.c > 0; }).slice(0, 5),
+        neg: arr.filter(function (t) { return t.c < 0; }).slice(0, 4)
+      };
+    } catch (e) { return null; }
+  }
+  function renderWhy(res) {
+    var box = $("j-why"); if (!box) return;
+    var names = window.FraudFeatures ? window.FraudFeatures.FEATURE_NAMES : [];
+    function fv(n) { var ix = names.indexOf(n); return (ix >= 0 && res.feats) ? res.feats[ix] : 0; }
+    var order = ["otp_is_requested", "url_is_shortener", "url_has_ip", "mentions_prize",
+      "mentions_blocked", "mentions_kyc", "has_url", "mentions_otp", "otp_word_near_digits",
+      "mentions_click", "has_long_digit_run", "has_phone", "has_upi", "has_email",
+      "has_currency", "mentions_debit", "mentions_credit", "mentions_do_not_share", "mentions_never_ask"];
+    var items = [];
+    order.forEach(function (n) { if (WHY[n] && fv(n) > 0) items.push(n); });
+    var ex = fv("exclaim_count"), caps = fv("caps_ratio");
+    var html = '<div class="why-panel"><h4>🔍 Why this verdict — the actual signals in this message</h4>';
+    html += '<div class="raw-box why-msg">' + highlightSignals(res.raw) + "</div>";
+    html += '<div class="why-legend"><span><i class="wx wx-url">link</i></span><span><i class="wx wx-otp">OTP / code</i></span><span><i class="wx wx-prize">prize lure</i></span><span><i class="wx wx-block">block threat</i></span><span><i class="wx wx-kyc">KYC</i></span><span><i class="wx wx-digits">long digits</i></span></div>';
+    if (items.length || ex >= 2 || caps >= 0.35) {
+      html += '<ul class="why-list">';
+      items.forEach(function (n) {
+        var w = WHY[n];
+        html += "<li" + (w[2] ? ' class="ok"' : "") + "><b>" + w[0] + ".</b> " + w[1] + ".</li>";
+      });
+      if (ex >= 2) html += "<li><b>Manufactured urgency.</b> " + Math.round(ex) + " exclamation marks — excitement and pressure are part of the script.</li>";
+      if (caps >= 0.35) html += "<li><b>Shouting caps.</b> " + Math.round(caps * 100) + "% of the letters are capitals — urgency theatre.</li>";
+      html += "</ul>";
+    } else {
+      html += '<p class="why-sub">No headline structured signals fired on this message — the verdict rests on the wording patterns the lexical arm learned from real messages (the word weights below).</p>';
+    }
+    var tw = topWords(res);
+    if (tw && (tw.pos.length || tw.neg.length)) {
+      html += '<div class="why-words"><span class="ww-label">Words the model itself weighted most in this message (lexical arm, learned from real data — + pushes to fraud, − pulls to genuine):</span>';
+      tw.pos.forEach(function (t) { html += '<span class="ww pos">' + esc(t.w) + " +" + t.c.toFixed(2) + "</span>"; });
+      tw.neg.forEach(function (t) { html += '<span class="ww neg">' + esc(t.w) + " " + t.c.toFixed(2) + "</span>"; });
+      html += "</div>";
+    }
+    html += '<p class="why-fine">Everything above is measured from this message — the structured features the pipeline computed (Stage 5) and the lexical model’s own learned word weights. Nothing is generated after the fact to justify the score.</p></div>';
+    box.innerHTML = html;
+  }
+
   function renderStage(i) {
     var res = J.res; if (!res) return;
     J.stage = i; setStage(i); setCloud(i, res);
@@ -538,7 +745,7 @@
     else if (i === 4) { renderConv(res); renderTInput(res); renderVec(res.raw); if (realNN) realNN.process(res); if (window.FD3D) window.FD3D.burst(); }
     else if (i === 5) renderFeats(res);
     else if (i === 6) animateMeter(res);
-    else if (i === 7) { showVerdict(res); renderTotal(res); }
+    else if (i === 7) { showVerdict(res); renderTotal(res); renderWhy(res); }
   }
 
   async function startJourney() {
@@ -832,6 +1039,29 @@
     }
   });
   document.addEventListener("dragover", function (e) { e.preventDefault(); });
+
+  /* ---------------- nav active state + back to top ---------------- */
+  var navLinks = Array.prototype.slice.call(document.querySelectorAll(".nav .links a"));
+  var navById = {};
+  navLinks.forEach(function (a) { navById[a.getAttribute("href").slice(1)] = a; });
+  var nio = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      navLinks.forEach(function (a) { a.classList.remove("active"); });
+      var link = navById[e.target.id];
+      if (link) link.classList.add("active");
+    });
+  }, { rootMargin: "-30% 0px -55% 0px" });
+  ["journey", "exploded", "dataset", "results", "training", "cicd", "runtime"].forEach(function (id) {
+    var s = document.getElementById(id); if (s) nio.observe(s);
+  });
+  var backTop = $("back-top");
+  if (backTop) {
+    window.addEventListener("scroll", function () {
+      backTop.classList.toggle("show", window.scrollY > 600);
+    }, { passive: true });
+    backTop.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
+  }
 })();
 
 /* --- day / night theme toggle (persisted as localStorage fdTheme) --- */
