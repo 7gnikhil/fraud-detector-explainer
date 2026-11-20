@@ -664,3 +664,41 @@ html[data-theme="day"] .cmx-cell.bad b { color: #b91c1c; }
 .prbar .fill.r { background: #22c55e; }
 .prbar b { color: var(--text); text-align: right; font-size: 12px; }
 .cm-frac { margin: 7px 0 0; font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* --- pass 4: CI/CD flowchart animation.
+       The scheduler in app.js adds .playing to #cicd and walks .active ->
+       .done across each lane's .cstep cards in order; the .carrow between
+       two steps gets .flow while the pulse crosses it and .lit once crossed.
+       With no JS (or prefers-reduced-motion) no classes are ever added and
+       the lanes render exactly as before — every step fully readable. --- */
+.cicd-replay { padding: 7px 14px; font-size: 12.5px; margin: 0 0 14px; }
+#cicd .cstep { transition: opacity .45s ease, border-color .45s ease, box-shadow .45s ease, transform .45s ease; }
+#cicd .carrow { transition: opacity .3s ease; }
+#cicd.playing .cstep { opacity: .5; }
+#cicd.playing .cstep.done { opacity: .88; border-color: var(--border2); }
+#cicd.playing .cstep.active { opacity: 1; border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 6px 18px rgba(56,189,248,.18);
+  transform: translateY(-2px); }
+html[data-theme="day"] #cicd.playing .cstep.active {
+  box-shadow: 0 0 0 1px var(--accent), 0 6px 18px rgba(2,132,199,.16); }
+#cicd.playing .carrow { opacity: .3; }
+#cicd.playing .carrow.lit { opacity: 1; }
+#cicd.playing .carrow.flow { opacity: 1; animation: carrowPulse .45s ease-in-out infinite alternate; }
+@keyframes carrowPulse {
+  from { transform: translateX(0) scale(1); }
+  to { transform: translateX(3px) scale(1.3); }
+}
+/* the gate beat: lane 3 pauses at "Evaluation gates" — an amber pulse in the
+   same colour as the GATED pill says a human approves here */
+#cicd.playing .cstep.gate-beat { border-color: #d97706;
+  box-shadow: 0 0 0 1px #d97706, 0 0 22px rgba(217,119,6,.35);
+  animation: gatePulse .85s ease-in-out infinite; }
+html[data-theme="day"] #cicd.playing .cstep.gate-beat { border-color: #b45309;
+  box-shadow: 0 0 0 1px #b45309, 0 0 22px rgba(180,83,9,.3); }
+@keyframes gatePulse {
+  0%, 100% { transform: translateY(-2px) scale(1); }
+  50% { transform: translateY(-2px) scale(1.025); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #cicd .carrow, #cicd.playing .cstep.gate-beat { animation: none !important; }
+}

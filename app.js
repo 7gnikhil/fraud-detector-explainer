@@ -1272,6 +1272,118 @@
     }, { passive: true });
     backTop.addEventListener("click", function () { window.scrollTo({ top: 0, behavior: "smooth" }); });
   }
+
+  /* ---------------- CI/CD flowchart animation ----------------
+     Lanes run in order 1 -> 2 -> 3. Within a lane the steps light up one
+     after another; the arrow before a step pulses while the flow crosses
+     it and stays lit once crossed. Lane 3 pauses at the evaluation gate
+     (amber beat, ~2x a normal step) before promotion — a human approves
+     there. Auto-starts when the section scrolls into view, stops when it
+     leaves, loops while visible. prefers-reduced-motion: never runs and
+     every step stays in its normal, fully readable state. */
+  (function () {
+    var sec = $("cicd");
+    if (!sec) return;
+    var reduced = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    var lanes = [];
+    sec.querySelectorAll(".cicd-lane").forEach(function (lane) {
+      lanes.push({
+        steps: Array.prototype.slice.call(lane.querySelectorAll(".cstep")),
+        arrows: Array.prototype.slice.call(lane.querySelectorAll(".carrow"))
+      });
+    });
+    if (!lanes.length) return;
+    var gateStep = null;
+    lanes.forEach(function (l) {
+      l.steps.forEach(function (s) {
+        if (s.textContent.replace(/^\s+/, "").indexOf("Evaluation gates") === 0) gateStep = s;
+      });
+    });
+    var STEP_MS = 780, ARROW_MS = 460, GATE_MS = 1500,
+        LANE_GAP_MS = 380, HOLD_MS = 1700, RESTART_MS = 1400;
+    var timer = null, gen = 0, inView = false;
+
+    function clearStates() {
+      sec.classList.remove("playing");
+      lanes.forEach(function (l) {
+        l.steps.forEach(function (s) { s.classList.remove("active", "done", "gate-beat"); });
+        l.arrows.forEach(function (a) { a.classList.remove("flow", "lit"); });
+      });
+    }
+    function stop() {
+      gen++;
+      if (timer) { clearTimeout(timer); timer = null; }
+      clearStates();
+    }
+    function later(fn, ms, g) {
+      timer = setTimeout(function () { if (g === gen) fn(); }, ms);
+    }
+    function runStep(li, si, g) {
+      if (g !== gen) return;
+      var lane = lanes[li];
+      if (si >= lane.steps.length) {
+        later(function () { runLane(li + 1, g); }, LANE_GAP_MS, g);
+        return;
+      }
+      var step = lane.steps[si];
+      function begin() {
+        if (g !== gen) return;
+        var isGate = step === gateStep;
+        step.classList.add("active");
+        if (isGate) step.classList.add("gate-beat");
+        later(function () {
+          step.classList.remove("active", "gate-beat");
+          step.classList.add("done");
+          runStep(li, si + 1, g);
+        }, isGate ? GATE_MS : STEP_MS, g);
+      }
+      if (si > 0) {
+        var arrow = lane.arrows[si - 1];
+        arrow.classList.add("flow");
+        later(function () {
+          arrow.classList.remove("flow");
+          arrow.classList.add("lit");
+          begin();
+        }, ARROW_MS, g);
+      } else begin();
+    }
+    function runLane(li, g) {
+      if (g !== gen) return;
+      if (li >= lanes.length) {
+        later(function () {
+          clearStates();
+          later(function () { if (inView) start(); }, RESTART_MS, g);
+        }, HOLD_MS, g);
+        return;
+      }
+      runStep(li, 0, g);
+    }
+    function start() {
+      if (reduced) return;
+      if (timer) { clearTimeout(timer); timer = null; }
+      gen++;
+      var g = gen;
+      clearStates();
+      sec.classList.add("playing");
+      runLane(0, g);
+    }
+    var cdio = new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        inView = e.isIntersecting;
+        if (inView) start(); else stop();
+      });
+    }, { threshold: 0.3 });
+    cdio.observe(sec);
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) stop();
+      else if (inView) start();
+    });
+    var replayBtn = $("cicd-replay");
+    if (replayBtn) replayBtn.addEventListener("click", function () {
+      if (reduced) { clearStates(); return; }
+      start();
+    });
+  })();
 })();
 
 /* --- day / night theme toggle (persisted as localStorage fdTheme) --- */
