@@ -719,7 +719,10 @@ img, canvas { max-width: 100%; }
 /* --- mobile --- */
 @media (max-width: 720px) {
   .nav { padding: 9px 12px 10px; }
+  .nav-row { gap: 8px; }
+  .nav .brand { font-size: 14.5px; line-height: 1.2; flex: 1 1 auto; min-width: 0; }
   .nav .brand span { display: none; }
+  .nav-actions { flex: 0 0 auto; }
   .tab-btn { flex: 0 0 auto; padding: 10px 15px; font-size: 13.5px; min-height: 44px; }
   .tab-panel { padding: 18px 12px 4px; }
   .tab-panel section { scroll-margin-top: 132px; }
