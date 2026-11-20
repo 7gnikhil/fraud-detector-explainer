@@ -203,7 +203,9 @@
   if (resetBtn) resetBtn.addEventListener("click", function () {
     if (running) return;
     $("j-text").value = SAMPLES.en_fraud;
-    J.res = null; J.stage = -1;
+    J.res = null; J.stage = -1; J.whySignals = [];
+    updateStageBar(-1);
+    var cbR = $("j-copy"); if (cbR) cbR.hidden = true;
     document.querySelectorAll(".pdot").forEach(function (d) { d.classList.remove("active", "done"); });
     for (var k = 0; k <= 7; k++) { var el = $("stage-" + k); if (el) el.classList.remove("active", "done"); }
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
@@ -233,6 +235,7 @@
     var stageNames = ["Message", "Preprocess", "Tokenize", "Language", "MuRIL embed", "Features", "Classify", "Verdict"];
     var lbl = $("j-step-label");
     if (lbl) lbl.textContent = "Stage " + (i + 1) + " of 8 — " + stageNames[i];
+    updateStageBar(i);
     for (var k = 0; k <= 7; k++) {
       var el = $("stage-" + k);
       el.classList.toggle("active", k === i);
@@ -240,6 +243,35 @@
       if (k === i) el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }
+
+  /* Mobile stage indicator: a slim fixed bar under the nav (CSS shows it only
+     at <=720px) naming the current stage, fed by the same setStage() calls
+     that drive the desktop progress dots. i < 0 hides it (no journey yet). */
+  var STAGE_BAR_NAMES = ["Message", "Preprocess", "Tokenize", "Language", "MuRIL embed", "Features", "Classify", "Verdict"];
+  function placeStageBar() {
+    var bar = $("stage-bar"); if (!bar) return;
+    var nav = document.querySelector(".nav");
+    if (nav) bar.style.top = Math.max(0, nav.getBoundingClientRect().bottom) + "px";
+  }
+  function updateStageBar(i) {
+    var bar = $("stage-bar"); if (!bar) return;
+    if (i < 0) { bar.classList.remove("on"); return; }
+    placeStageBar();
+    var t = $("stage-bar-text");
+    if (t) t.textContent = "Stage " + (i + 1) + " of 8 · " + STAGE_BAR_NAMES[i];
+    var f = $("stage-bar-fill");
+    if (f) f.style.width = ((i + 1) / 8 * 100) + "%";
+    bar.classList.add("on");
+  }
+  var barTicking = false;
+  function onBarScroll() {
+    var bar = $("stage-bar");
+    if (!bar || !bar.classList.contains("on") || barTicking) return;
+    barTicking = true;
+    requestAnimationFrame(function () { barTicking = false; placeStageBar(); });
+  }
+  window.addEventListener("resize", onBarScroll);
+  window.addEventListener("scroll", onBarScroll, { passive: true });
 
   function renderAnon(anon) {
     var esc = anon.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -562,7 +594,9 @@
     J.res = runModel(raw);
     if (TOK) attachTokens(J.res); else loadTokenizer();
     ["j-conv", "j-tinput", "j-total", "j-idmap", "j-ids", "j-pad", "j-ppsteps"].forEach(function (id) { var e = $(id); if (e) e.innerHTML = ""; });
-    J.stage = -1;
+    J.stage = -1; J.whySignals = [];
+    updateStageBar(-1);
+    var cbP = $("j-copy"); if (cbP) cbP.hidden = true;
     var v = $("j-verdict"); v.className = "verdict-card"; v.innerHTML = "";
     $("j-verdict-note").textContent = "";
     var wEl = $("j-why"); if (wEl) wEl.innerHTML = "";
@@ -606,6 +640,8 @@
       Math.round(res.p * 100) + "% fraud probability · " + res.det.label +
       " · lexical arm live on this page (the extension stacks MuRIL embeddings on top, so its exact score can differ slightly)</span>";
     $("j-verdict-note").textContent = expl;
+    var cb = $("j-copy");
+    if (cb) { cb.hidden = false; cb.textContent = "📋 Copy result"; }
     if (realNN) realNN.finish(res);
     if (window.FD3D) window.FD3D.setVerdict(res.zone);
   }
@@ -708,6 +744,10 @@
     var items = [];
     order.forEach(function (n) { if (WHY[n] && fv(n) > 0) items.push(n); });
     var ex = fv("exclaim_count"), caps = fv("caps_ratio");
+    /* Stash the fired signals' short labels for the Copy result button. */
+    J.whySignals = items.map(function (n) { return WHY[n][0]; });
+    if (ex >= 2) J.whySignals.push("Manufactured urgency");
+    if (caps >= 0.35) J.whySignals.push("Shouting caps");
     var html = '<div class="why-panel"><h4>🔍 Why this verdict — the actual signals in this message</h4>';
     html += '<div class="raw-box why-msg">' + highlightSignals(res.raw) + "</div>";
     html += '<div class="why-legend"><span><i class="wx wx-url">link</i></span><span><i class="wx wx-otp">OTP / code</i></span><span><i class="wx wx-prize">prize lure</i></span><span><i class="wx wx-block">block threat</i></span><span><i class="wx wx-kyc">KYC</i></span><span><i class="wx wx-digits">long digits</i></span></div>';
@@ -767,6 +807,35 @@
       b.setAttribute("aria-expanded", open ? "true" : "false");
     });
   });
+  /* Copy result: a plain-text summary of the current verdict + top signals. */
+  var copyBtn = $("j-copy");
+  if (copyBtn) copyBtn.addEventListener("click", function () {
+    var res = J.res; if (!res) return;
+    var label = res.zone === "fraud" ? "FRAUD" : res.zone === "safe" ? "LIKELY SAFE" : "UNCERTAIN";
+    var sig = (J.whySignals && J.whySignals.length) ? J.whySignals.slice(0, 5).join("; ") : "no strong signals";
+    var text = "Fraud Detector — verdict: " + label + "\n" +
+      "Fraud probability: " + Math.round(res.p * 100) + "%\n" +
+      "Detected language: " + res.det.label + "\n" +
+      "Top signals: " + sig + "\n" +
+      "Scored locally in the browser by the live lexical model (fraud-detector-explainer.vercel.app). A verdict is evidence, not a guarantee.";
+    function done(ok) {
+      copyBtn.textContent = ok ? "Copied ✓" : "Copy failed";
+      setTimeout(function () { copyBtn.textContent = "📋 Copy result"; }, 1500);
+    }
+    function fallback() {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta); done(!!ok);
+      } catch (e) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+    } else { fallback(); }
+  });
+
   $("j-run").addEventListener("click", startJourney);
   $("j-next").addEventListener("click", function () {
     if (running) return;

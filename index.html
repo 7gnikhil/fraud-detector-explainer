@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fraud Detector — How the Model Works | Multilingual Fraud Detection</title>
 <meta name="description" content="An animated, exploded-view tour of a multilingual (Telugu · Hindi · English) fraud-message detection system: dataset, preprocessing, MuRIL embeddings, stacked classifier, and the live on-device model.">
-<script>try{if(localStorage.getItem('fdTheme')==='day')document.documentElement.dataset.theme='day';}catch(e){}</script>
+<script>try{var t=localStorage.getItem('fdTheme');if(t==='day'||(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches))document.documentElement.dataset.theme='day';}catch(e){}</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,8 +18,14 @@
     <a href="#dataset">Dataset</a><a href="#results">Evaluation</a>
     <a href="#training">Training</a><a href="#cicd">CI/CD</a><a href="#runtime">How it runs</a>
   </div>
+  <div class="nav-actions">
+    <a class="nav-pill" href="#journey">Try Demo</a>
+    <a class="nav-pill ext" href="https://microsoftedge.microsoft.com/addons/detail/jkinpaedkhihmiamdboahecceebjddof" target="_blank" rel="noopener">Get Extension</a>
+  </div>
   <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch between day and night theme">☀️ Day</button>
 </nav>
+
+<div id="stage-bar" aria-hidden="true"><span id="stage-bar-text"></span><div class="stage-bar-track"><div id="stage-bar-fill"></div></div></div>
 
 <header class="hero">
   <canvas id="nn-hero"></canvas>
@@ -31,6 +37,7 @@
       and then runs a <b>real message</b> through it, live, in your browser.</p>
     <div class="hero-cta">
       <a class="btn primary" href="#journey">▶ Run a message through the model</a>
+      <a class="btn ext" href="https://microsoftedge.microsoft.com/addons/detail/jkinpaedkhihmiamdboahecceebjddof" target="_blank" rel="noopener">🧩 Install Edge Extension</a>
       <a class="btn ghost" href="#exploded">🔩 Open the exploded view</a>
     </div>
     <div class="chips">
@@ -72,6 +79,14 @@
     model</b> in your browser; nothing is uploaded.</p>
 
   <div class="card journey-card">
+    <div class="privacy-card">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+      <div>
+        <p>Everything runs in your browser — the model on this page scores your message locally.</p>
+        <p>No message is uploaded by default. Nothing you paste here is sent anywhere.</p>
+        <p>In the extension, sharing a correction is opt-in, and the text is anonymized on your device first.</p>
+      </div>
+    </div>
     <textarea id="j-text" rows="3">Congratulations! You have won a cash prize of Rs 50,000 in the lucky draw. Click http://claim-prize-now.xyz and share the OTP sent to your mobile to receive the amount today itself.</textarea>
     <div class="sample-row">
       <button class="chip-btn" data-sample="en_fraud">🇬🇧 Scam — prize + OTP</button>
@@ -232,6 +247,7 @@
       <div class="model-label">Live demo: lexical model (instant, in-page). The full MuRIL stack runs in the browser extension.</div>
       <div class="verdict-card" id="j-verdict"></div>
       <p class="stage-note" id="j-verdict-note"></p>
+      <button id="j-copy" class="btn ghost copy-btn" type="button" hidden>📋 Copy result</button>
       <div id="j-why"></div>
       <div class="conv-title" style="margin-top:16px">🧭 The total journey — this message, end to end</div>
       <div class="total-stack" id="j-total"></div>
@@ -463,6 +479,15 @@
       <li><b>Training data is thinner than we want</b>, above all genuine Hindi/Telugu messages — field accuracy will differ from test numbers.</li>
       <li><b>Not a government body. Not legal advice.</b> Official routes: 1930 and cybercrime.gov.in.</li>
     </ul>
+    <div class="not-box">
+      <h3>What this tool is not</h3>
+      <ul>
+        <li><b>Not a blocker.</b> It does not block, delete or stop messages — it only labels them.</li>
+        <li><b>Not a bank or an authority.</b> It never asks for your OTP or PIN — any message that does ask is itself a red flag.</li>
+        <li><b>Not a guarantee.</b> On a hard set of unseen messages it gets about 4 in 5 right, and it is weakest on genuine alert-style Telugu and Hindi messages.</li>
+        <li><b>Not proof of safety.</b> A “genuine” verdict is not proof that a message is safe.</li>
+      </ul>
+    </div>
   </div>
 </section>
 
